@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Solid, Liquid, Gas</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #83a4d4 0%, #b6fbff 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #1e2c44 0%, #123a3e 100%); }
+  h1 { color:#123a5c; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; }
+  html[data-theme="dark"] h1 { color:#c4e8ff; }
+  #item { font-size:clamp(80px,22vw,130px); line-height:1; transition:transform .3s; }
+  #itemName { color:#123a5c; font-weight:900; font-size:clamp(20px,5.5vw,30px); margin:8px 0 16px; }
+  html[data-theme="dark"] #itemName { color:#fff; }
+  #bins { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; padding:0 12px; }
+  .bin { border:none; border-radius:20px; cursor:pointer; padding:16px 18px; font-family:inherit; color:#fff;
+    display:flex; flex-direction:column; align-items:center; gap:4px; min-width:110px;
+    box-shadow:0 8px 0 rgba(0,0,0,.18); transition:transform .08s; }
+  .bin .be { font-size:clamp(36px,10vw,54px); line-height:1; }
+  .bin .bt { font-weight:900; font-size:clamp(14px,3.8vw,18px); }
+  #binSolid { background:#5d4037; } #binLiquid { background:#0277bd; } #binGas { background:#7b1fa2; }
+  .bin:active { transform:translateY(3px); }
+  .bin.wrong { animation:shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#123a5c; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#c4e8ff; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+  #item.zap { transform:scale(0); }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Is it a solid, a liquid, or a gas?</h1>
+  <div id="item"></div>
+  <div id="itemName"></div>
+  <div id="bins">
+    <button class="bin" id="binSolid"><span class="be">🧊</span><span class="bt">Solid</span></button>
+    <button class="bin" id="binLiquid"><span class="be">💧</span><span class="bt">Liquid</span></button>
+    <button class="bin" id="binGas"><span class="be">💨</span><span class="bt">Gas</span></button>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const ITEMS=[
+      ['🪨','a rock','solid','it keeps its shape'],
+      ['🧊','an ice cube','solid','it keeps its shape — until it melts'],
+      ['📕','a book','solid','it keeps its shape'],
+      ['🥄','a spoon','solid','it keeps its shape'],
+      ['🧱','a brick','solid','it keeps its shape'],
+      ['🍎','an apple','solid','it keeps its shape'],
+      ['🪵','a log of wood','solid','it keeps its shape'],
+      ['🥛','milk','liquid','it flows and takes the shape of its glass'],
+      ['💧','water','liquid','it flows and takes the shape of its cup'],
+      ['🧃','juice','liquid','it flows and takes the shape of its box'],
+      ['🍯','honey','liquid','it flows — slowly!'],
+      ['🛢️','oil','liquid','it flows and takes the shape of its can'],
+      ['♨️','steam','gas','it spreads out to fill the air'],
+      ['🌬️','the wind','gas','it is moving air all around us'],
+      ['🎈','air in a balloon','gas','it fills the whole balloon'],
+      ['🫧','air in bubbles','gas','it fills each bubble'],
+    ];
+    const itemEl=document.getElementById('item'), nameEl=document.getElementById('itemName'), scoreEl=document.getElementById('score');
+    let item, score=0, locked=false;
+
+    function newRound(){
+      locked=false; itemEl.classList.remove('zap');
+      item=KidsUtil.rand(ITEMS);
+      itemEl.textContent=item[0]; nameEl.textContent=item[1];
+      KidsAudio.speak(item[1]+'. Solid, liquid, or gas?');
+    }
+    function pick(state,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(state===item[2]){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        itemEl.classList.add('zap');
+        KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! '+item[1]+' is a '+item[2]+' because '+item[3]+'.');
+        confetti(); setTimeout(newRound,2800);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Think — does it keep its shape, flow, or float in the air?');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    document.getElementById('binSolid').onclick=e=>pick('solid',e.currentTarget);
+    document.getElementById('binLiquid').onclick=e=>pick('liquid',e.currentTarget);
+    document.getElementById('binGas').onclick=e=>pick('gas',e.currentTarget);
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

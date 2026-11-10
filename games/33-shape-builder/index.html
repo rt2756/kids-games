@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Shape Builder</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #7f7fd5 0%, #86a8e7 50%, #91eae4 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center;
+  }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #26264a 0%, #1c3050 50%, #134a47 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(20px,4.8vw,34px); margin:0; padding:84px 16px 2px; text-align:center;
+    text-shadow:2px 2px 0 rgba(0,0,0,.18); }
+  #stage { position:relative; width:min(72vw,300px); height:min(72vw,300px); margin:8px 0; }
+  .slot { position:absolute; }
+  .shape { width:100%; height:100%; }
+  .sq { border-radius:8px; }
+  .ci { border-radius:50%; }
+  .tr { clip-path:polygon(50% 0, 100% 100%, 0 100%); }
+  .ghost { background:rgba(255,255,255,.28); }
+  .filled { animation:pop .35s cubic-bezier(.2,1.5,.4,1); }
+  @keyframes pop { 0%{transform:scale(.2)} 60%{transform:scale(1.12)} 100%{transform:scale(1)} }
+  #tray { display:flex; gap:clamp(10px,4vw,26px); flex-wrap:wrap; justify-content:center; padding:8px; }
+  .piece { width:clamp(56px,16vw,84px); height:clamp(56px,16vw,84px); background:rgba(255,255,255,.85);
+    border-radius:18px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+    box-shadow:0 8px 0 rgba(0,0,0,.18); transition:transform .08s; }
+  .piece:active { transform:translateY(3px); }
+  .piece .shape { width:64%; height:64%; }
+  .piece.wrong { animation:shake .4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+  #hint { color:#fff; font-weight:800; font-size:clamp(14px,3.4vw,20px); text-shadow:1px 1px 0 rgba(0,0,0,.2); padding-bottom:8px; }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:28px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="title">Build it!</h1>
+  <div id="stage"></div>
+  <div id="tray"></div>
+  <div id="hint">Tap a shape to put it in place</div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const SHAPE_CLASS = { square:'sq', circle:'ci', triangle:'tr' };
+    const NAME = { square:'square', circle:'circle', triangle:'triangle' };
+    const PICTURES = [
+      { name:'house', slots:[
+        { type:'square',   left:30, top:46, w:40, h:40, color:'#f4a261' },
+        { type:'triangle', left:24, top:20, w:52, h:28, color:'#e76f51' },
+      ]},
+      { name:'rocket', slots:[
+        { type:'triangle', left:38, top:10, w:24, h:24, color:'#e63946' },
+        { type:'square',   left:40, top:34, w:20, h:42, color:'#457b9d' },
+        { type:'circle',   left:44, top:42, w:12, h:12, color:'#a8dadc' },
+      ]},
+      { name:'boat', slots:[
+        { type:'triangle', left:40, top:16, w:28, h:34, color:'#ffb703' },
+        { type:'square',   left:24, top:56, w:52, h:16, color:'#8d5524' },
+        { type:'circle',   left:10, top:12, w:16, h:16, color:'#fcbf49' },
+      ]},
+    ];
+
+    const stage = document.getElementById('stage');
+    const tray = document.getElementById('tray');
+    const titleEl = document.getElementById('title');
+    const scoreEl = document.getElementById('score');
+    let pic, slotEls, filledCount, score = 0, idx = 0;
+
+    function shapeNode(type, cls) {
+      const s = document.createElement('div');
+      s.className = 'shape ' + SHAPE_CLASS[type] + (cls ? ' ' + cls : '');
+      return s;
+    }
+
+    function newPicture() {
+      pic = PICTURES[idx % PICTURES.length]; idx++;
+      filledCount = 0;
+      titleEl.textContent = 'Build the ' + pic.name + '!';
+      stage.innerHTML = ''; tray.innerHTML = '';
+      slotEls = pic.slots.map(slot => {
+        const d = document.createElement('div');
+        d.className = 'slot';
+        d.style.left = slot.left + '%'; d.style.top = slot.top + '%';
+        d.style.width = slot.w + '%'; d.style.height = slot.h + '%';
+        d.appendChild(shapeNode(slot.type, 'ghost'));
+        d.dataset.filled = '0';
+        stage.appendChild(d);
+        return d;
+      });
+      KidsUtil.shuffle(pic.slots.map((s,i)=>({s,i}))).forEach(({s,i}) => {
+        const p = document.createElement('div');
+        p.className = 'piece';
+        const sh = shapeNode(s.type); sh.style.background = s.color;
+        p.appendChild(sh);
+        p.onclick = () => place(s.type, p);
+        tray.appendChild(p);
+      });
+      KidsAudio.speak('Build the ' + pic.name + '!');
+    }
+
+    function place(type, pieceEl) {
+      try { KidsAudio.getAudio(); } catch(e) {}
+      const slotIdx = pic.slots.findIndex((s, i) => s.type === type && slotEls[i].dataset.filled === '0');
+      if (slotIdx === -1) { pieceEl.classList.add('wrong'); KidsAudio.playChime('uhoh'); setTimeout(()=>pieceEl.classList.remove('wrong'),450); return; }
+      const slot = pic.slots[slotIdx], el = slotEls[slotIdx];
+      el.dataset.filled = '1';
+      el.innerHTML = '';
+      const sh = shapeNode(slot.type, 'filled'); sh.style.background = slot.color;
+      el.appendChild(sh);
+      pieceEl.remove();
+      KidsAudio.playPop();
+      KidsAudio.speak(NAME[type] + '!');
+      filledCount++;
+      if (filledCount === pic.slots.length) {
+        score++; scoreEl.textContent = '⭐ ' + score;
+        setTimeout(() => { KidsAudio.playChime('yay'); KidsAudio.speak('You built a ' + pic.name + '!'); confetti(); }, 300);
+        setTimeout(newPicture, 2200);
+      }
+    }
+
+    function confetti() {
+      for (let i=0;i<24;i++){ const c=document.createElement('div'); c.className='confetti';
+        c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw';
+        c.style.animationDelay=(Math.random()*0.4)+'s'; document.body.appendChild(c); setTimeout(()=>c.remove(),2100); }
+    }
+    newPicture();
+  </script>
+</body>
+</html>

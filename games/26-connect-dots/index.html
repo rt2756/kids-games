@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Connect the Dots</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #c471f5 0%, #e36fc0 55%, #fa71cd 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  html[data-theme="dark"] body {
+    background: linear-gradient(180deg, #1f1030 0%, #2a1228 55%, #2a1322 100%);
+  }
+  h1 {
+    color: #fff;
+    text-align: center;
+    font-size: clamp(22px, 5.2vw, 40px);
+    font-weight: 900;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.18);
+    margin: 0;
+    padding: 84px 16px 0;
+  }
+  #stage {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 6px;
+  }
+  #board {
+    width: min(94vw, 66vh);
+    aspect-ratio: 1;
+    background: rgba(255,255,255,0.16);
+    border-radius: 28px;
+    touch-action: manipulation;
+  }
+  html[data-theme="dark"] #board { background: rgba(255,255,255,0.06); }
+
+  #path { stroke: #fff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  .dotc { fill: #fff; stroke: #8e2de2; stroke-width: 1.4; }
+  .dott { fill: #8e2de2; font-weight: 900; font-family: "Arial Black", sans-serif; }
+  .hit  { fill: transparent; cursor: pointer; }
+  .dot.done .dotc { fill: #ffd23f; stroke: #fff; }
+  .dot.done .dott { fill: #6b4b00; }
+  .ring { fill: none; stroke: #fff44f; stroke-width: 1.8; opacity: 0; transform-box: fill-box; transform-origin: center; }
+  .dot.next .ring { opacity: 1; animation: ringpulse 1.1s ease-in-out infinite; }
+  @keyframes ringpulse {
+    0%,100% { transform: scale(0.7); opacity: 0.4; }
+    50%     { transform: scale(1.25); opacity: 1; }
+  }
+  .reveal { animation: revealpop 0.5s cubic-bezier(0.2,1.5,0.4,1); transform-box: fill-box; transform-origin: center; }
+  @keyframes revealpop {
+    0%   { transform: scale(0.1); opacity: 0; }
+    70%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  #hint {
+    color: #fff;
+    font-weight: 700;
+    font-size: clamp(13px, 3vw, 18px);
+    opacity: 0.85;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+    padding: 6px 0 16px;
+    text-align: center;
+  }
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.7s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0);      opacity: 1; }
+    to   { transform: translateY(105vh) rotate(380deg); opacity: 0.85; }
+  }
+</style>
+</head>
+<body>
+  <h1>Connect the dots!</h1>
+  <div id="stage">
+    <svg id="board" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+      <polyline id="path"></polyline>
+      <g id="dots"></g>
+      <g id="reveal"></g>
+    </svg>
+  </div>
+  <div id="hint">Tap the glowing dot — 1, 2, 3…</div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const NS = 'http://www.w3.org/2000/svg';
+    const NUMS = ['One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
+
+    function starPoints() {
+      const cx = 50, cy = 51, out = 40, inn = 17, pts = [];
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? out : inn;
+        const a = (-90 + i * 36) * Math.PI / 180;
+        pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+      }
+      return pts;
+    }
+    function caterpillarPoints() {
+      const pts = [];
+      for (let i = 0; i < 10; i++) pts.push([12 + i * 8.4, 50 + (i % 2 === 0 ? 9 : -9)]);
+      return pts;
+    }
+    const FISH = [
+      [22,50],[36,33],[58,31],[72,41],[88,28],
+      [80,51],[88,73],[72,60],[57,70],[36,67],
+    ];
+
+    const PICTURES = [
+      { name: 'star',        emoji: '⭐', close: true,  pts: starPoints() },
+      { name: 'caterpillar', emoji: '🐛', close: false, pts: caterpillarPoints() },
+      { name: 'fish',        emoji: '🐟', close: true,  pts: FISH },
+    ];
+
+    const pathEl = document.getElementById('path');
+    const dotsEl = document.getElementById('dots');
+    const revealEl = document.getElementById('reveal');
+
+    let picIdx = 0;
+    let pts = [], N = 0, progress = 0, locked = false;
+    let connected = [];
+    let dotGroups = [];
+
+    function el(tag, attrs) {
+      const e = document.createElementNS(NS, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    function buildPicture() {
+      const pic = PICTURES[picIdx];
+      pts = pic.pts; N = pts.length;
+      progress = 0; locked = false; connected = []; dotGroups = [];
+      pathEl.setAttribute('points', '');
+      dotsEl.innerHTML = '';
+      revealEl.innerHTML = '';
+
+      pts.forEach((p, i) => {
+        const g = el('g', { class: 'dot' });
+        g.appendChild(el('circle', { class: 'ring', cx: p[0], cy: p[1], r: 7.5 }));
+        g.appendChild(el('circle', { class: 'dotc', cx: p[0], cy: p[1], r: 4.3 }));
+        const t = el('text', { class: 'dott', x: p[0], y: p[1], 'font-size': 4.6, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+        t.textContent = i + 1;
+        g.appendChild(t);
+        const hit = el('circle', { class: 'hit', cx: p[0], cy: p[1], r: 9 });
+        hit.addEventListener('pointerdown', () => tapDot(i));
+        g.appendChild(hit);
+        dotsEl.appendChild(g);
+        dotGroups.push(g);
+      });
+
+      highlightNext();
+      KidsAudio.speak('Connect the dots! Find number one.');
+    }
+
+    function setPath() {
+      pathEl.setAttribute('points', connected.map(p => p[0] + ',' + p[1]).join(' '));
+    }
+    function highlightNext() {
+      dotGroups.forEach((g, i) => g.classList.toggle('next', i === progress));
+    }
+
+    function tapDot(i) {
+      if (locked) return;
+      try { KidsAudio.getAudio(); } catch (e) {}
+      if (i === progress) {
+        connected.push(pts[i]);
+        setPath();
+        dotGroups[i].classList.add('done');
+        dotGroups[i].classList.remove('next');
+        progress++;
+        KidsAudio.playPop();
+        KidsAudio.speak(NUMS[i]);
+        if (progress >= N) finish();
+        else highlightNext();
+      } else if (i > progress) {
+        // tapped too far ahead — nudge toward the glowing dot
+        KidsAudio.playChime('uhoh');
+        KidsAudio.speak(`Find number ${NUMS[progress].toLowerCase()}.`);
+      }
+    }
+
+    function finish() {
+      locked = true;
+      const pic = PICTURES[picIdx];
+      if (pic.close) { connected.push(pts[0]); setPath(); }
+
+      const r = el('text', { class: 'reveal', x: 50, y: 52, 'font-size': 34, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+      r.textContent = pic.emoji;
+      revealEl.appendChild(r);
+
+      KidsAudio.playChime('yay');
+      KidsAudio.speak(`You made a ${pic.name}! Hooray!`);
+      confettiBurst();
+      setTimeout(() => { picIdx = (picIdx + 1) % PICTURES.length; buildPicture(); }, 2700);
+    }
+
+    function confettiBurst() {
+      for (let i = 0; i < 28; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(['🎉','⭐','🎈','✨','🌈','✏️']);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2300);
+      }
+    }
+
+    buildPicture();
+  </script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Touch &amp; Giggle</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #a1c4fd 100%);
+    height:100vh; width:100vw; overflow:hidden; position:relative; }
+  html[data-theme="dark"] body { background: linear-gradient(135deg, #3a2329 0%, #2a2238 50%, #1c2a44 100%); }
+  #hint { position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center;
+    color:rgba(255,255,255,.9); font-weight:900; font-size:clamp(22px,6vw,40px); pointer-events:none; text-shadow:2px 2px 0 rgba(0,0,0,.15); }
+  .burst { position:absolute; font-size:clamp(60px,16vw,120px); pointer-events:none; transform:translate(-50%,-50%);
+    animation:bounce .9s ease-out forwards; }
+  @keyframes bounce { 0%{transform:translate(-50%,-50%) scale(0) rotate(-20deg);opacity:1}
+    60%{transform:translate(-50%,-50%) scale(1.25) rotate(8deg);opacity:1}
+    100%{transform:translate(-50%,-80%) scale(1) rotate(0);opacity:0} }
+</style>
+</head>
+<body>
+  <div id="hint">👆 Touch me!</div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const FUN=['🌟','🎈','🐶','🐱','🦄','🌈','🍭','⚽','🚗','🐥','🦋','🐠','🍓','🎉','🐻','🌸'];
+    const SAYINGS=['Wheee!','Yay!','Hooray!','Tee hee!','Again!','Boing!','Woohoo!'];
+    let hint=document.getElementById('hint'), hidden=false;
+
+    function pop(x,y){
+      try{KidsAudio.getAudio();}catch(e){}
+      if(!hidden){ hint.style.display='none'; hidden=true; }
+      const e=document.createElement('div'); e.className='burst'; e.textContent=KidsUtil.rand(FUN);
+      e.style.left=x+'px'; e.style.top=y+'px';
+      document.body.appendChild(e);
+      setTimeout(()=>e.remove(),900);
+      KidsAudio.playPop();
+      if(Math.random()<0.5) KidsAudio.speak(KidsUtil.rand(SAYINGS), { pitch:1.4 });
+    }
+
+    document.body.addEventListener('pointerdown', e=>pop(e.clientX, e.clientY));
+  </script>
+</body>
+</html>

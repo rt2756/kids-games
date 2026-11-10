@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Slide Puzzle</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+
+<style>
+  body { --av-bg: linear-gradient(180deg,#134e5e,#3a7d6b); --av-ink: #fff; }
+    .board { position:relative; background:rgba(0,0,0,.25); border-radius:14px; }
+    .tile { position:absolute; border:3px solid transparent; background-clip:padding-box; border-radius:16px; background-color:#fff8e1; color:#333;
+      font-family:inherit; font-weight:900; font-size:inherit; cursor:pointer; padding:0; transition:left .14s, top .14s, background-color .2s;
+      box-shadow:inset 0 -5px 0 rgba(0,0,0,.14); }
+    .tile.home { background-color:#b6f09c; }
+    .tile.wrong { animation:av-shake .35s; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+
+  <script>
+    // Concept: number order + planning. Boards grow from 2x2 to 4x4. Each board is
+    // scrambled by sliding from the solved one, so it can always be solved.
+    const K = KidsKit, A = KidsAudio;
+    const INTRO = 'Slide the tiles to put the numbers in order. Tap a tile next to the gap.';
+    const ui = K.setup();
+    const sub = K.el('div', 'av-sub av-hint', INTRO), fit = K.el('div', 'av-fit'), board = K.el('div', 'board'), bar = K.el('div', 'av-bar');
+    fit.appendChild(board); ui.stage.classList.add('av-puzzle'); ui.stage.append(sub, fit, bar);
+    sub.onclick = () => { K.wake(); K.say(INTRO); };
+    let cols, rows, cells, tiles = {}, moves, locked, timer, first = true, initCells;
+    const again = K.el('button', 'av-btn', '🔄 Again'); again.onclick = () => { K.wake(); set(initCells); }; bar.appendChild(again);
+
+    const gap = () => cells.indexOf(0);
+    function slide(i, quiet) {                       // slide the tile at i (and any between) toward the gap
+      const g = gap(), gx = g % cols, gy = Math.floor(g / cols), x = i % cols, y = Math.floor(i / cols);
+      if (i === g || (x !== gx && y !== gy)) return false;
+      const step = x === gx ? (y < gy ? -cols : cols) : (x < gx ? -1 : 1);
+      for (let p = g; p !== i; p += step) cells[p] = cells[p + step];
+      cells[i] = 0;
+      return true;
+    }
+    const solved = () => cells.every((v, i) => v === (i + 1) % cells.length);
+    function size() {
+      const s = Math.floor(Math.min(fit.clientWidth / cols, fit.clientHeight / rows, 190));
+      board.style.width = s * cols + 'px'; board.style.height = s * rows + 'px';
+      board.style.fontSize = Math.round(s * .42) + 'px';
+    }
+    function place() {
+      size();
+      cells.forEach((v, i) => {
+        if (!v) return;
+        const t = tiles[v];
+        t.style.left = (i % cols) * 100 / cols + '%'; t.style.top = Math.floor(i / cols) * 100 / rows + '%';
+        t.classList.toggle('home', v === i + 1);
+      });
+      sub.textContent = moves ? 'Moves: ' + moves : INTRO;
+    }
+    function set(c) {
+      clearTimeout(timer);
+      initCells = c.slice(); cells = c.slice(); moves = 0; locked = false;
+      board.innerHTML = ''; tiles = {};
+      cells.forEach(v => {
+        if (!v) return;
+        const t = tiles[v] = K.el('button', 'tile', v);
+        t.style.width = 100 / cols + '%'; t.style.height = 100 / rows + '%';
+        t.onclick = () => tap(v, t);
+        board.appendChild(t);
+      });
+      place();
+    }
+    function tap(v, t) {
+      if (locked) return;
+      K.wake();
+      if (!slide(cells.indexOf(v))) return K.wrong(t);
+      moves++; A.playPop(); place();
+      if (solved()) {
+        locked = true; K.star(); A.playChime('yay'); K.confetti();
+        const line = 'All in order! ' + moves + ' moves.';
+        K.say(line); timer = setTimeout(() => L.win(), K.speakMs(line) + 900);
+      }
+    }
+    const L = K.levels('slide-puzzle', ui, n => {
+      [cols, rows] = n < 1 ? [2, 2] : n < 3 ? [3, 2] : n < 7 ? [3, 3] : [4, 4];
+      const shuffles = n < 1 ? 3 : n < 3 ? 14 + n * 6 : n < 7 ? 30 + (n - 3) * 20 : 60 + (n - 7) * 30;
+      cells = []; for (let i = 0; i < cols * rows; i++) cells.push((i + 1) % (cols * rows));
+      let last = -1;
+      for (let k = 0; k < shuffles || solved(); k++) {
+        const g = gap(), opts = [g - 1, g + 1, g - cols, g + cols].filter(p => p >= 0 && p < cells.length && p !== last
+          && (Math.floor(p / cols) === Math.floor(g / cols) || p % cols === g % cols));
+        last = g; slide(opts[Math.floor(Math.random() * opts.length)]);
+      }
+      set(cells);
+      K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>National Symbols of India</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #ff9933 0%, #ffffff 50%, #138808 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a2410 0%, #1c1c1c 50%, #0c2a0c 100%); }
+  h1 { color:#222; font-weight:900; font-size:clamp(18px,4.6vw,28px); margin:0; position:fixed; top:92px; left:0; right:0; text-align:center; }
+  html[data-theme="dark"] h1 { color:#fff; }
+  #flag { font-size:clamp(50px,14vw,90px); }
+  #q { color:#152; font-weight:900; font-size:clamp(20px,5.2vw,30px); margin:4px 16px 8px; text-align:center; background:rgba(255,255,255,.6); padding:6px 16px; border-radius:14px; }
+  html[data-theme="dark"] #q { color:#fff; background:rgba(0,0,0,.4); }
+  #choices { display:flex; gap:clamp(12px,4vw,26px); flex-wrap:wrap; justify-content:center; padding:8px 10px; }
+  .choice { display:flex; flex-direction:column; align-items:center; gap:4px; width:clamp(96px,26vw,140px); padding:14px 6px;
+    border-radius:22px; background:#fff; cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.2); transition:transform .08s; }
+  .choice .ce { font-size:clamp(46px,12vw,76px); line-height:1; }
+  .choice .cl { font-weight:900; color:#c1440e; font-size:clamp(14px,3.6vw,18px); }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#222; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#fff; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>National Symbols of India 🇮🇳</h1>
+  <div id="flag">🇮🇳</div>
+  <div id="q"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const SYM=[
+      { cat:'animal', e:'🐯', n:'Tiger',   wrong:[['🦁','Lion'],['🐘','Elephant'],['🐆','Leopard']] },
+      { cat:'bird',   e:'🦚', n:'Peacock', wrong:[['🦜','Parrot'],['🦅','Eagle'],['🕊️','Dove']] },
+      { cat:'flower', e:'🪷', n:'Lotus',   wrong:[['🌹','Rose'],['🌻','Sunflower'],['🌼','Daisy']] },
+      { cat:'fruit',  e:'🥭', n:'Mango',   wrong:[['🍎','Apple'],['🍌','Banana'],['🍇','Grapes']] },
+      { cat:'tree',   e:'🌳', n:'Banyan',  wrong:[['🌴','Palm'],['🌵','Cactus'],['🎄','Pine']] },
+    ];
+    const qEl=document.getElementById('q'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let cur, score=0, locked=false;
+    function newRound(){
+      locked=false; cur=KidsUtil.rand(SYM);
+      qEl.textContent='India’s national '+cur.cat+' is the…?';
+      const distract=KidsUtil.shuffle(cur.wrong).slice(0,2);
+      const opts=KidsUtil.shuffle([[cur.e,cur.n,true],...distract.map(d=>[d[0],d[1],false])]);
+      choicesEl.innerHTML='';
+      opts.forEach(o=>{ const c=document.createElement('div'); c.className='choice';
+        c.innerHTML='<span class="ce">'+o[0]+'</span><span class="cl">'+o[1]+'</span>'; c.onclick=()=>pick(o[2],c,o[1]); choicesEl.appendChild(c); });
+      KidsAudio.speak('India’s national '+cur.cat+'?');
+    }
+    function pick(correct,c,name){
+      if(locked) return; locked=true; try{KidsAudio.getAudio();}catch(e){}
+      if(correct){ c.classList.add('right'); score++; scoreEl.textContent='⭐ '+score; KidsAudio.playChime('yay'); KidsAudio.speak('Yes! The '+cur.n+'!'); confetti(); setTimeout(newRound,1900);
+      } else { c.classList.add('wrong'); KidsAudio.playChime('uhoh'); [...choicesEl.children].forEach(x=>{ if(x.querySelector('.cl').textContent===cur.n) x.classList.add('right'); }); KidsAudio.speak('It is the '+cur.n+'.'); setTimeout(newRound,2100); }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🧡','💚']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

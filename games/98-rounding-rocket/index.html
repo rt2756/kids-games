@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Rounding Rocket</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #4568dc 0%, #b06ab3 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #16224a 0%, #3a2240 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #rocket { font-size:clamp(46px,12vw,70px); line-height:1; animation:float 2s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+  #num { color:#fff; font-weight:900; font-size:clamp(60px,16vw,100px); line-height:1.1; text-shadow:3px 3px 0 rgba(0,0,0,.2); }
+  #sub { color:#fff; font-weight:800; font-size:clamp(16px,4.4vw,22px); margin:4px 0 14px; opacity:.95; }
+  #choices { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#4527a0; font-weight:900; cursor:pointer;
+    font-size:clamp(24px,7vw,36px); padding:14px 26px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="q"></h1>
+  <div id="rocket">🚀</div>
+  <div id="num"></div>
+  <div id="sub"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const qEl=document.getElementById('q'), numEl=document.getElementById('num'), sub=document.getElementById('sub'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, base, n, score=0, locked=false;
+
+    function newRound(){
+      locked=false; choicesEl.innerHTML=''; sub.textContent='';
+      base=KidsUtil.rand([10,10,100]); // nearest ten twice as often
+      if(base===10){ do { n=11+Math.floor(Math.random()*88); } while(n%10===0); }
+      else { do { n=110+Math.floor(Math.random()*880); } while(n%100===0); }
+      answer=Math.round(n/base)*base;
+      qEl.textContent='Round to the nearest '+(base===10?'TEN':'HUNDRED')+'!';
+      numEl.textContent=n;
+      const below=Math.floor(n/base)*base, above=below+base;
+      const opts=new Set([answer, answer===below?above:below]);
+      while(opts.size<3) opts.add(answer+KidsUtil.rand([-base*2,base*2,-base,base]));
+      KidsUtil.shuffle([...opts]).forEach(v=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=v;
+        b.onclick=()=>pick(v,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('Round '+n+' to the nearest '+(base===10?'ten':'hundred')+'!');
+    }
+    function pick(v,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(v===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right');
+        const digit=base===10?n%10:Math.floor((n%100)/10);
+        sub.textContent=(digit>=5?'The '+digit+' rounds it UP!':'The '+digit+' keeps it DOWN!');
+        KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! '+n+' rounds to '+answer+'. Blast off!');
+        confetti(); setTimeout(newRound,2500);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Is '+n+' closer to '+Math.floor(n/base)*base+' or '+(Math.floor(n/base)*base+base)+'? Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🚀']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

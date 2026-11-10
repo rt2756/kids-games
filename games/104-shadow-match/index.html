@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Shadow Match</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#cfd9df,#e2ebf0); --av-ink: #2f3b4a; }
+  .shadowbox { background:#fff; border-radius:28px; padding:6px 34px; box-shadow:0 8px 20px rgba(0,0,0,.15); }
+  .shadow { filter:brightness(0); opacity:.78; transition:filter .5s, opacity .5s; }
+  .shadow.lit { filter:none; opacity:1; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: visual discrimination — match an object to its outline.
+    const K = KidsKit, U = KidsUtil;
+    const THINGS = [['elephant','🐘'],['giraffe','🦒'],['rabbit','🐇'],['duck','🦆'],['cat','🐈'],['car','🚗'],
+      ['aeroplane','✈️'],['tree','🌳'],['house','🏠'],['umbrella','☂️'],['bicycle','🚲'],['banana','🍌'],
+      ['butterfly','🦋'],['fish','🐟'],['star','⭐'],['key','🔑'],['chair','🪑'],['train','🚂'],['camel','🐪'],['teapot','🫖']];
+    const draw = K.bag(THINGS);
+    K.quiz({ title: 'Whose shadow is this?', next(round) {
+      const t = draw();
+      const others = U.shuffle(THINGS.filter(x => x !== t)).slice(0, round < 5 ? 2 : 3);
+      return {
+        show: '<div class="shadowbox"><div class="av-big shadow">' + t[1] + '</div></div>',
+        say: 'Whose shadow is this?',
+        choices: U.shuffle([t].concat(others)).map(x => ({ html: K.card(x[1]), ok: x === t,
+          say: 'That is the ' + x[0] + '. Look at the shape again.' })),
+        praise: 'Yes! It is the ' + t[0] + '!',
+        after() { document.querySelector('.shadow').classList.add('lit'); },
+      };
+    } });
+  </script>
+</body>
+</html>

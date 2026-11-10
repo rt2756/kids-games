@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Grammar Fix</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #00b09b 0%, #96c93d 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #063a34 0%, #2c3a10 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #sentence { background:rgba(255,255,255,.95); color:#1c4d2a; border-radius:18px; padding:18px 20px; margin:8px;
+    width:min(90vw,560px); font-size:clamp(20px,5.4vw,30px); font-weight:800; line-height:1.5; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,.2); }
+  .blank { color:#e76f51; border-bottom:4px solid #e76f51; padding:0 8px; }
+  #choices { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; width:min(90vw,560px); padding:8px 12px; }
+  .choice { border:none; border-radius:14px; background:#fff; color:#1c7a45; font-weight:900; font-size:clamp(20px,5.4vw,30px);
+    padding:14px 24px; cursor:pointer; box-shadow:0 7px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; background:#d6f0c2; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>✍️ Fix the sentence</h1>
+  <div id="sentence"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const ITEMS=[
+      {pre:'She ',post:' to school yesterday.',o:['went','go','goes'],a:0},
+      {pre:'They ',post:' playing now.',o:['are','is','am'],a:0},
+      {pre:'I ',post:' a book last night.',o:['read','reads','reading'],a:0},
+      {pre:'He ',post:' very tall.',o:['is','are','am'],a:0},
+      {pre:'The dog ',post:' in the park.',o:['runs','run','running'],a:0},
+      {pre:'Yesterday it ',post:' a lot.',o:['rained','rains','raining'],a:0},
+      {pre:'',post:' you like ice cream?',o:['Do','Does','Is'],a:0},
+      {pre:'She has two ',post:'.',o:['cats','cat','cates'],a:0},
+      {pre:'This is ',post:' apple.',o:['an','a','the'],a:0},
+      {pre:'We ',post:' happy today.',o:['are','is','am'],a:0},
+    ];
+    const sentenceEl=document.getElementById('sentence'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let cur, score=0, idx=0, locked=false;
+
+    function render(fill){ sentenceEl.innerHTML = cur.pre + '<span class="blank">' + (fill||'?') + '</span>' + cur.post; }
+
+    function newRound(){
+      locked=false;
+      cur=ITEMS[idx%ITEMS.length]; idx++;
+      render(null);
+      const order=KidsUtil.shuffle(cur.o.map((t,i)=>({t,i})));
+      choicesEl.innerHTML='';
+      order.forEach(({t,i})=>{ const b=document.createElement('button'); b.className='choice'; b.textContent=t; b.onclick=()=>pick(i,b,t); choicesEl.appendChild(b); });
+      KidsAudio.speak('Which word fits?');
+    }
+
+    function pick(i,b,t){
+      if(locked) return; try{KidsAudio.getAudio();}catch(e){}
+      if(i===cur.a){ locked=true; b.classList.add('right'); render(t); score++; scoreEl.textContent='⭐ '+score;
+        KidsAudio.playChime('yay'); KidsAudio.speak((cur.pre+t+cur.post).replace('?','')); confetti(); setTimeout(newRound,2200);
+      } else { b.classList.add('wrong'); KidsAudio.playChime('uhoh'); KidsAudio.speak('Try another word.'); setTimeout(()=>b.classList.remove('wrong'),450); }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

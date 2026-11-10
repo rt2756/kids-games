@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Decimal Dash</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #e96443 0%, #904e95 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #4a1e12 0%, #301a32 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #stage { width:min(92vw,520px); margin-bottom:10px; }
+  #compare { display:flex; gap:16px; justify-content:center; align-items:center; }
+  .decbtn { border:none; border-radius:18px; background:#fff; color:#7b1fa2; font-weight:900; cursor:pointer;
+    font-size:clamp(34px,9vw,54px); padding:18px 26px;
+    box-shadow:0 8px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .decbtn:active { transform:translateY(3px); }
+  .decbtn.wrong { animation:shake .35s; }
+  .decbtn.right { background:#b6f09c; }
+  .vs { color:#fff; font-weight:900; font-size:clamp(22px,6vw,32px); }
+  #choices { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#7b1fa2; font-weight:900; cursor:pointer;
+    font-size:clamp(22px,6vw,32px); padding:14px 24px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="q"></h1>
+  <div id="stage"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const qEl=document.getElementById('q'), stage=document.getElementById('stage'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let score=0, locked=false;
+
+    function lineSVG(dot){
+      // Number line 0..1 with tenths; dot at dot/10.
+      let ticks='';
+      for(let i=0;i<=10;i++){
+        const x=30+i*46;
+        ticks+='<line x1="'+x+'" y1="40" x2="'+x+'" y2="'+(i%5===0?24:30)+'" stroke="#fff" stroke-width="3"/>';
+        if(i===0||i===5||i===10) ticks+='<text x="'+x+'" y="70" fill="#fff" font-size="20" font-weight="900" text-anchor="middle">'+(i/10)+'</text>';
+      }
+      const dx=30+dot*46;
+      return '<svg viewBox="0 0 520 80" style="width:100%">'
+        + '<line x1="30" y1="40" x2="490" y2="40" stroke="#fff" stroke-width="5" stroke-linecap="round"/>'
+        + ticks
+        + '<circle cx="'+dx+'" cy="40" r="12" fill="#ffd54f" stroke="#333" stroke-width="3"/></svg>';
+    }
+    function newRound(){
+      locked=false; choicesEl.innerHTML=''; stage.innerHTML='';
+      if(Math.random()<0.5) lineMode(); else compareMode();
+    }
+    function lineMode(){
+      qEl.textContent='Where is the yellow dot?';
+      const dot=1+Math.floor(Math.random()*9); // 0.1..0.9
+      stage.innerHTML=lineSVG(dot);
+      const answer=(dot/10).toFixed(1);
+      const opts=new Set([answer]);
+      while(opts.size<3){ opts.add((Math.max(1,Math.min(9,dot+Math.floor(Math.random()*5)-2))/10).toFixed(1)); }
+      KidsUtil.shuffle([...opts]).forEach(v=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=v;
+        b.onclick=()=>pick(v===answer,b,'The dot sits at '+answer+' — '+dot+' tenths along the line!');
+        choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('The number line goes from zero to one. Where is the yellow dot?');
+    }
+    function compareMode(){
+      qEl.textContent='Tap the BIGGER number!';
+      let a,b2;
+      do { a=(1+Math.floor(Math.random()*89))/100; b2=(1+Math.floor(Math.random()*89))/100; } while(a===b2);
+      // Sometimes make it tricky: 0.5 vs 0.45
+      if(Math.random()<0.4){ a=(1+Math.floor(Math.random()*9))/10; b2=a-0.05+Math.floor(Math.random()*2)*0.1; b2=Math.round(b2*100)/100; if(a===b2||b2<=0) b2=a+0.05; }
+      const wrap=document.createElement('div'); wrap.id='compare';
+      [a,b2].forEach(v=>{
+        const btn=document.createElement('button'); btn.className='decbtn'; btn.textContent=v;
+        btn.onclick=()=>pick(v===Math.max(a,b2),btn,Math.max(a,b2)+' is bigger than '+Math.min(a,b2)+'!');
+        wrap.appendChild(btn);
+        if(v===a){ const s=document.createElement('span'); s.className='vs'; s.textContent='or'; wrap.appendChild(s); }
+      });
+      stage.appendChild(wrap);
+      KidsAudio.speak('Which decimal is bigger: '+a+', or '+b2+'?');
+    }
+    function pick(correct,btn,sayWin){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(correct){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! '+sayWin);
+        confetti(); setTimeout(newRound,2300);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Compare the tenths first, then the hundredths. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

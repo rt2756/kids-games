@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Magnet Magic</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#ffe0e0,#ffc3a0); --av-ink: #7a1c1c; }
+  .rig { display:flex; align-items:center; justify-content:space-between; width:min(86vw,420px); background:rgba(255,255,255,.6); border-radius:24px; padding:10px 22px; }
+  .rig span { font-size:clamp(60px,16vmin,100px); line-height:1.1; transition:transform .7s cubic-bezier(.5,0,.3,1.4); }
+  .rig .mag { transform:rotate(-45deg); }
+  .rig.pull .thing { transform:translateX(calc(-1 * min(46vw, 215px))); }
+  .rig.stay .thing { animation:nope .5s 2; }
+  @keyframes nope { 0%,100% { transform:rotate(0); } 30% { transform:rotate(-8deg); } 70% { transform:rotate(8deg); } }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: magnets pull iron and steel — and nothing else in the pencil box.
+    const K = KidsKit, U = KidsUtil;
+    const ITEMS = [['nut and bolt','🔩',true,'steel'],['paper clip','🖇️',true,'steel'],['pair of scissors','✂️',true,'steel'],['safety pin','🧷',true,'steel'],
+      ['sewing needle','🪡',true,'steel'],['hammer head','🔨',true,'iron'],['spanner','🔧',true,'steel'],['chain','⛓️',true,'iron'],['tin can','🥫',true,'steel'],
+      ['pencil','✏️',false,'wood'],['football','⚽',false,'plastic'],['log','🪵',false,'wood'],['glass','🥛',false,'glass'],['book','📕',false,'paper'],
+      ['sock','🧦',false,'cloth'],['crayon','🖍️',false,'wax'],['bottle','🧴',false,'plastic'],['ring','💍',false,'gold']];
+    const draw = K.bag(ITEMS);
+    K.quiz({ next() {
+      const it = draw();
+      return {
+        title: 'Will the magnet pull the ' + it[0] + '?',
+        show: '<div class="rig"><span class="mag">🧲</span><span class="thing">' + it[1] + '</span></div><div class="av-sub">made of ' + it[3] + '</div>',
+        say: 'Will the magnet pull the ' + it[0] + '? It is made of ' + it[3] + '.',
+        choices: [{ html: K.card('🧲', 'Yes, it pulls'), ok: it[2] }, { html: K.card('✋', 'No, it stays'), ok: !it[2] }]
+          .map(c => Object.assign(c, { say: 'Think again. It is made of ' + it[3] + '.' })),
+        praise: it[2] ? 'Yes! It is made of ' + it[3] + '. Magnets pull iron and steel.'
+                      : 'Right! It is made of ' + it[3] + '. Magnets do not pull ' + it[3] + '.',
+        after() { document.querySelector('.rig').classList.add(it[2] ? 'pull' : 'stay'); },
+      };
+    } });
+  </script>
+</body>
+</html>

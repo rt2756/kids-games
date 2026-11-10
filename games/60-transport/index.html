@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Land, Water or Air?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #2980b9 0%, #6dd5fa 60%, #cfe8a9 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0e2a3e 0%, #123040 60%, #1f2e14 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.6vw,28px); margin:0; padding:82px 16px 4px; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #vehicle { font-size:clamp(90px,26vw,170px); line-height:1; margin:6px 0; }
+  #vname { color:#fff; font-weight:800; font-size:clamp(18px,4.6vw,26px); text-transform:capitalize; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #bins { display:flex; gap:clamp(10px,3vw,22px); padding:14px 10px 22px; flex-wrap:wrap; justify-content:center; }
+  .bin { display:flex; flex-direction:column; align-items:center; gap:6px; width:clamp(92px,26vw,140px); height:clamp(110px,30vw,160px);
+    border-radius:22px; background:rgba(255,255,255,.9); cursor:pointer; justify-content:center; box-shadow:0 8px 0 rgba(0,0,0,.18); transition:transform .08s; }
+  .bin .be { font-size:clamp(40px,11vw,64px); }
+  .bin .bl { font-weight:900; color:#2b6ca3; font-size:clamp(16px,4vw,22px); }
+  .bin:active { transform:translateY(3px); }
+  .bin.wrong { animation:shake .4s; }
+  .bin.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Does it go on Land, Water or Air?</h1>
+  <div id="vehicle"></div>
+  <div id="vname"></div>
+  <div id="bins">
+    <div class="bin" data-k="land"><span class="be">🛣️</span><span class="bl">Land</span></div>
+    <div class="bin" data-k="water"><span class="be">🌊</span><span class="bl">Water</span></div>
+    <div class="bin" data-k="air"><span class="be">☁️</span><span class="bl">Air</span></div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const V=[
+      ['🚗','car','land'],['🚌','bus','land'],['🚆','train','land'],['🚲','bicycle','land'],['🛺','auto','land'],
+      ['⛵','boat','water'],['🚢','ship','water'],['🛶','canoe','water'],
+      ['✈️','aeroplane','air'],['🚁','helicopter','air'],['🚀','rocket','air'],
+    ];
+    const vehEl=document.getElementById('vehicle'), vnameEl=document.getElementById('vname'), scoreEl=document.getElementById('score');
+    let cur, score=0, locked=false;
+    const LABEL={land:'land',water:'water',air:'air'};
+
+    function newRound(){
+      locked=false;
+      cur=KidsUtil.rand(V);
+      vehEl.textContent=cur[0]; vnameEl.textContent=cur[1];
+      document.querySelectorAll('.bin').forEach(b=>b.className='bin');
+      KidsAudio.speak('Where does the '+cur[1]+' go?');
+    }
+    document.querySelectorAll('.bin').forEach(bin=>{
+      bin.onclick=()=>{
+        if(locked) return; try{KidsAudio.getAudio();}catch(e){}
+        if(bin.dataset.k===cur[2]){ locked=true; bin.classList.add('right'); score++; scoreEl.textContent='⭐ '+score;
+          KidsAudio.playChime('yay'); KidsAudio.speak('Yes! The '+cur[1]+' goes on '+LABEL[cur[2]]+'!'); confetti(); setTimeout(newRound,1900);
+        } else { bin.classList.add('wrong'); KidsAudio.playChime('uhoh'); KidsAudio.speak('Try again.'); setTimeout(()=>bin.classList.remove('wrong'),450); }
+      };
+    });
+    function confetti(){ for(let i=0;i<20;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

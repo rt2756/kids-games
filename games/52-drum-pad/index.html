@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Drum Pad</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background:#161226; height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; }
+  html[data-theme="dark"] body { background:#0c0a16; }
+  h1 { color:#fff; text-align:center; font-weight:900; font-size:clamp(18px,4.6vw,28px); margin:0; padding:80px 16px 8px; }
+  #pads { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:8px 14px 18px; }
+  .pad { border:none; border-radius:24px; cursor:pointer; font-size:clamp(40px,12vw,72px);
+    display:flex; align-items:center; justify-content:center; box-shadow:0 10px 0 rgba(0,0,0,.35); transition:transform .06s, filter .06s; }
+  .pad:active, .pad.hit { transform:translateY(6px) scale(.98); filter:brightness(1.5); box-shadow:0 4px 0 rgba(0,0,0,.35); }
+</style>
+</head>
+<body>
+  <h1>🥁 Tap to play music!</h1>
+  <div id="pads"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const PADS=[
+      {c:'#ff5757',f:261.63,e:'🔴'},{c:'#ff8c42',f:293.66,e:'🟠'},{c:'#ffd23f',f:329.63,e:'🟡'},
+      {c:'#2ec4b6',f:392.00,e:'🟢'},{c:'#3a86ff',f:440.00,e:'🔵'},{c:'#9b5de5',f:523.25,e:'🟣'},
+    ];
+    const padsEl=document.getElementById('pads');
+
+    function note(freq){
+      const ctx=KidsAudio.getAudio(); const now=ctx.currentTime;
+      const osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.type='triangle'; osc.frequency.value=freq;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.4, now+0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now+0.5);
+      osc.connect(gain).connect(ctx.destination); osc.start(now); osc.stop(now+0.55);
+    }
+
+    PADS.forEach(p=>{ const b=document.createElement('button'); b.className='pad'; b.style.background=p.c; b.textContent=p.e;
+      b.addEventListener('pointerdown', ()=>{ note(p.f); b.classList.add('hit'); setTimeout(()=>b.classList.remove('hit'),120); });
+      padsEl.appendChild(b); });
+  </script>
+</body>
+</html>

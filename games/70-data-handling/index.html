@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Data Handling</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #2193b0 0%, #6dd5ed 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0e3a46 0%, #123a44 100%); }
+  h1 { color:#06384a; font-weight:900; font-size:clamp(18px,4.6vw,28px); margin:0; padding:82px 16px 4px; }
+  html[data-theme="dark"] h1 { color:#bfeeff; }
+  #chart { background:rgba(255,255,255,.9); border-radius:18px; padding:12px 16px; margin:8px; width:min(92vw,520px); box-shadow:0 8px 20px rgba(0,0,0,.2); }
+  .prow { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #e0eef2; }
+  .prow:last-child { border-bottom:none; }
+  .plabel { width:84px; font-weight:900; color:#06384a; font-size:clamp(14px,3.4vw,18px); text-transform:capitalize; }
+  .picons { font-size:clamp(20px,5vw,30px); line-height:1.1; letter-spacing:2px; }
+  #q { color:#06384a; font-weight:900; font-size:clamp(18px,4.8vw,26px); margin:6px 16px 6px; text-align:center; }
+  html[data-theme="dark"] #q { color:#fff; }
+  #choices { display:flex; gap:clamp(10px,3vw,20px); flex-wrap:wrap; justify-content:center; padding:4px 12px 18px; }
+  .choice { min-width:clamp(90px,24vw,140px); padding:14px 16px; border:none; border-radius:16px; background:#fff; color:#1c7a9c;
+    font-weight:900; font-size:clamp(20px,5vw,28px); cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit; text-transform:capitalize; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; background:#cfeaf2; }
+  .choice.right { background:#b6f09c; color:#2d7a00; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#06384a; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#bfeeff; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>📊 Read the picture graph</h1>
+  <div id="chart"></div>
+  <div id="q"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const SETS=[
+      [['apples','🍎'],['bananas','🍌'],['oranges','🍊'],['grapes','🍇']],
+      [['cats','🐱'],['dogs','🐶'],['birds','🐦'],['fish','🐟']],
+      [['cars','🚗'],['buses','🚌'],['bikes','🚲'],['boats','⛵']],
+      [['stars','⭐'],['hearts','❤️'],['flowers','🌸'],['balls','⚽']],
+    ];
+    const chartEl=document.getElementById('chart'), qEl=document.getElementById('q'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function newRound(){
+      locked=false;
+      const base=KidsUtil.shuffle(KidsUtil.rand(SETS)).slice(0,3);
+      const rows=base.map(([name,icon])=>({ name, icon, count:2+Math.floor(Math.random()*6) }));
+      // ensure distinct max/min for clean questions
+      chartEl.innerHTML='';
+      rows.forEach(r=>{ const d=document.createElement('div'); d.className='prow';
+        d.innerHTML='<span class="plabel">'+r.name+'</span><span class="picons">'+r.icon.repeat(r.count)+'</span>'; chartEl.appendChild(d); });
+
+      const qType=KidsUtil.rand(['most','least','count','more']);
+      let choicesArr=[];
+      if(qType==='most'){ const m=rows.reduce((a,b)=>b.count>a.count?b:a); answer=m.name; qEl.textContent='Which has the most?'; choicesArr=rows.map(r=>r.name); }
+      else if(qType==='least'){ const m=rows.reduce((a,b)=>b.count<a.count?b:a); answer=m.name; qEl.textContent='Which has the least?'; choicesArr=rows.map(r=>r.name); }
+      else if(qType==='count'){ const r=KidsUtil.rand(rows); answer=String(r.count); qEl.textContent='How many '+r.name+'?'; const s=new Set([r.count]); while(s.size<3){ let d=r.count+(Math.floor(Math.random()*5)-2); if(d>=1&&d!==r.count) s.add(d);} choicesArr=[...s].map(String); }
+      else { const two=KidsUtil.shuffle(rows).slice(0,2); const hi=Math.max(two[0].count,two[1].count), lo=Math.min(two[0].count,two[1].count); const a=two.find(x=>x.count===hi), b=two.find(x=>x.count===lo); answer=String(hi-lo); qEl.textContent='How many more '+a.name+' than '+b.name+'?'; const s=new Set([hi-lo]); while(s.size<3){ let d=(hi-lo)+(Math.floor(Math.random()*5)-2); if(d>=0&&d!==hi-lo) s.add(d);} choicesArr=[...s].map(String); }
+
+      choicesEl.innerHTML='';
+      KidsUtil.shuffle(choicesArr).forEach(v=>{ const b=document.createElement('button'); b.className='choice'; b.textContent=v; b.onclick=()=>pick(v,b); choicesEl.appendChild(b); });
+      KidsAudio.speak(qEl.textContent);
+    }
+    function pick(v,b){
+      if(locked) return; locked=true; try{KidsAudio.getAudio();}catch(e){}
+      if(v===answer){ b.classList.add('right'); score++; scoreEl.textContent='⭐ '+score; KidsAudio.playChime('yay'); KidsAudio.speak('Correct!'); confetti(); setTimeout(newRound,1800);
+      } else { b.classList.add('wrong'); KidsAudio.playChime('uhoh'); [...choicesEl.children].forEach(x=>{ if(x.textContent===answer) x.classList.add('right'); }); KidsAudio.speak('The answer is '+answer+'.'); setTimeout(newRound,2100); }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

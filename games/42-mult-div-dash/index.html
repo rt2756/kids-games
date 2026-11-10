@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Multiply &amp; Divide Dash</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #060d10 0%, #0e1c20 50%, #12262e 100%); }
+  h1 { color:#7ee8fa; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; padding:80px 16px 2px; }
+  #modes { display:flex; gap:8px; padding:4px; }
+  .mode { border:none; border-radius:999px; padding:8px 16px; font-weight:900; font-size:16px; cursor:pointer; font-family:inherit; background:rgba(255,255,255,.15); color:#d6f6ff; }
+  .mode.on { background:#7ee8fa; color:#0f2027; }
+  #stats { display:flex; gap:18px; color:#d6f6ff; font-weight:900; font-size:clamp(14px,3.2vw,18px); margin:6px 0; }
+  #bar { width:min(80vw,420px); height:12px; border-radius:999px; background:rgba(255,255,255,.18); overflow:hidden; }
+  #fill { height:100%; width:100%; background:#7ee8fa; }
+  #q { color:#fff; font-weight:900; font-size:clamp(38px,11vw,72px); margin:10px 0; }
+  #choices { display:grid; grid-template-columns:1fr 1fr; gap:clamp(10px,3vw,16px); padding:6px 12px 20px; }
+  .choice { width:clamp(110px,32vw,180px); height:clamp(60px,14vw,86px); border:none; border-radius:16px; background:#eafcff;
+    color:#0f2027; font-weight:900; font-size:clamp(26px,7vw,42px); cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.3); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; background:#ffd2c2; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #msg { color:#7ee8fa; font-weight:800; min-height:22px; font-size:clamp(13px,3.2vw,18px); }
+</style>
+</head>
+<body>
+  <h1>Dash — beat the clock!</h1>
+  <div id="modes"></div>
+  <div id="stats"><span id="score">Score 0</span><span id="streak">🔥 0</span><span id="best">Best 0</span></div>
+  <div id="bar"><div id="fill"></div></div>
+  <div id="q"></div>
+  <div id="choices"></div>
+  <div id="msg"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const modesEl=document.getElementById('modes'), qEl=document.getElementById('q'), choicesEl=document.getElementById('choices'),
+      fill=document.getElementById('fill'), msg=document.getElementById('msg'),
+      scoreEl=document.getElementById('score'), streakEl=document.getElementById('streak'), bestEl=document.getElementById('best');
+    const MODES=['×','÷','Mix']; let mode='×';
+    let answer, score=0, streak=0, best=0, locked=false, timer=null; const LIMIT=7000;
+
+    function renderModes(){ modesEl.innerHTML=''; MODES.forEach(m=>{ const b=document.createElement('button'); b.className='mode'+(m===mode?' on':''); b.textContent=m; b.onclick=()=>{ mode=m; renderModes(); newRound(); }; modesEl.appendChild(b); }); }
+
+    function newRound(){
+      locked=false; msg.textContent='';
+      const op=(mode==='Mix')?KidsUtil.rand(['×','÷']):mode;
+      let a=2+Math.floor(Math.random()*11), b=2+Math.floor(Math.random()*11);
+      if(op==='×'){ answer=a*b; qEl.textContent=`${a} × ${b}`; }
+      else { const prod=a*b; answer=a; qEl.textContent=`${prod} ÷ ${b}`; }
+      const opts=new Set([answer]);
+      while(opts.size<4){ let d=answer+(Math.floor(Math.random()*13)-6); if(d>0&&d!==answer) opts.add(d); }
+      choicesEl.innerHTML='';
+      KidsUtil.shuffle([...opts]).forEach(n=>{ const c=document.createElement('button'); c.className='choice'; c.textContent=n; c.onclick=()=>pick(n,c); choicesEl.appendChild(c); });
+      startTimer();
+    }
+    function startTimer(){ fill.style.width='100%'; clearInterval(timer); const t0=Date.now();
+      timer=setInterval(()=>{ const left=LIMIT-(Date.now()-t0); fill.style.width=Math.max(0,left/LIMIT*100)+'%'; if(left<=0){ clearInterval(timer); over(); } },80); }
+
+    function pick(n,c){ if(locked) return; locked=true; clearInterval(timer); try{KidsAudio.getAudio();}catch(e){}
+      if(n===answer){ c.classList.add('right'); score++; streak++; best=Math.max(best,streak);
+        scoreEl.textContent='Score '+score; streakEl.textContent='🔥 '+streak; bestEl.textContent='Best '+best;
+        KidsAudio.playChime('yay'); if(streak&&streak%5===0) KidsAudio.speak(streak+' in a row!'); setTimeout(newRound,600);
+      } else { c.classList.add('wrong'); streak=0; streakEl.textContent='🔥 0'; KidsAudio.playChime('uhoh'); msg.textContent='It was '+answer;
+        [...choicesEl.children].forEach(x=>{ if(+x.textContent===answer) x.classList.add('right'); }); setTimeout(newRound,1300); } }
+    function over(){ if(locked) return; locked=true; streak=0; streakEl.textContent='🔥 0'; msg.textContent='Too slow — it was '+answer;
+      KidsAudio.playChime('uhoh'); [...choicesEl.children].forEach(x=>{ if(+x.textContent===answer) x.classList.add('right'); }); setTimeout(newRound,1300); }
+    renderModes(); newRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Food Chain</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#d7f5dd,#9ad3bc); --av-ink: #134e3a; }
+  .chain { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px; min-height:clamp(70px,18vmin,110px);
+    background:rgba(255,255,255,.55); border-radius:22px; padding:8px 14px; width:min(94vw,720px); }
+  .link { display:flex; flex-direction:column; align-items:center; font-weight:800; font-size:12px; }
+  .link .e { font-size:clamp(34px,9vmin,58px); line-height:1.1; }
+  .arrow { font-size:clamp(18px,4vmin,26px); font-weight:900; opacity:.6; }
+  .role { font-weight:800; font-size:clamp(14px,3.4vmin,19px); min-height:1.4em; text-align:center; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: food chains — energy flows sun → producer → herbivore → carnivore → top predator.
+    const K = KidsKit, U = KidsUtil, A = KidsAudio;
+    const CHAINS = [
+      [['grass','🌱'],['grasshopper','🦗'],['frog','🐸'],['snake','🐍'],['eagle','🦅']],
+      [['leaves','🌿'],['caterpillar','🐛'],['bird','🐦'],['cat','🐈']],
+      [['grain','🌾'],['mouse','🐭'],['owl','🦉']],
+      [['tiny algae','🦠'],['shrimp','🦐'],['fish','🐟'],['shark','🦈']],
+      [['grass','🌱'],['rabbit','🐇'],['fox','🦊']],
+      [['grass','🌱'],['deer','🦌'],['tiger','🐅']],
+      [['flower nectar','🌸'],['butterfly','🦋'],['frog','🐸'],['snake','🐍']],
+      [['leaves','🌿'],['giraffe','🦒'],['lion','🦁']],
+    ];
+    const draw = K.bag(CHAINS);
+    const ui = K.setup({ title: 'Build the food chain — who eats whom?' });
+    const chainEl = K.el('div', 'chain'), role = K.el('div', 'role'), row = K.el('div', 'av-choices');
+    ui.stage.append(chainEl, role, row);
+    let chain, pos;
+
+    function link(emoji, label) { return K.el('div', 'link', '<span class="e">' + emoji + '</span>' + label); }
+    function newRound() {
+      chain = draw(); pos = 0;
+      chainEl.innerHTML = ''; chainEl.appendChild(link('☀️', 'sun'));
+      role.textContent = 'Start with the one that makes its own food.';
+      row.innerHTML = '';
+      U.shuffle(chain).forEach(item => {
+        const b = K.el('button', 'av-choice', K.card(item[1], item[0]));
+        b.onclick = () => pick(item, b);
+        row.appendChild(b);
+      });
+      K.say('Build the food chain. Start with the one that makes its own food from sunlight.');
+    }
+    function pick(item, b) {
+      K.wake();
+      if (item !== chain[pos]) {
+        K.wrong(b);
+        K.say(pos === 0 ? 'Start with the plant. Plants make their own food from sunlight.' : 'Not yet. Who eats the ' + chain[pos - 1][0] + '?');
+        return;
+      }
+      b.remove(); A.playPop();
+      chainEl.append(K.el('span', 'arrow', '→'), link(item[1], item[0]));
+      const last = pos === chain.length - 1;
+      let line, tag;
+      if (pos === 0) { tag = 'Producer — makes its own food'; line = 'Plants make their own food from sunlight. They are producers.'; }
+      else if (pos === 1) { tag = 'Herbivore — eats plants'; line = 'The ' + item[0] + ' eats the ' + chain[0][0] + '. It is a herbivore.'; }
+      else { tag = 'Carnivore — eats animals'; line = 'The ' + item[0] + ' eats the ' + chain[pos - 1][0] + '. It is a carnivore.'; }
+      if (last) { tag += ' · top of the chain'; line += ' Nothing here hunts the ' + item[0] + '. It is at the top of the chain!'; }
+      role.textContent = tag;
+      pos++;
+      if (last) { K.star(); A.playChime('yay'); K.confetti(); K.say(line); setTimeout(newRound, K.speakMs(line) + 1500); }
+      else { K.say(line); role.textContent = tag + ' · who eats the ' + item[0] + '?'; }
+    }
+    newRound();
+  </script>
+</body>
+</html>

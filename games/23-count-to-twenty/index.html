@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Count to 20</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #f857a6 0%, #ff7eb3 45%, #ffc371 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  html[data-theme="dark"] body {
+    background: linear-gradient(180deg, #2a1020 0%, #34142a 45%, #3a2415 100%);
+  }
+
+  /* clear of the fixed back / theme buttons */
+  #head {
+    width: 100%;
+    padding-top: 84px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+  }
+  #title {
+    color: #fff;
+    font-weight: 900;
+    font-size: clamp(18px, 4vw, 30px);
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.18);
+    margin-bottom: 2px;
+  }
+  #target {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    color: #fff;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+  }
+  #bignum {
+    font-size: clamp(56px, 14vw, 120px);
+    font-weight: 900;
+    line-height: 1;
+    font-family: "Arial Black", sans-serif;
+  }
+  #bignum.pop { animation: pop-in 0.4s cubic-bezier(0.2,1.5,0.4,1); }
+  @keyframes pop-in {
+    0%   { transform: scale(0.3); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  #numword {
+    font-size: clamp(24px, 6vw, 52px);
+    font-weight: 900;
+  }
+
+  /* Balloon field */
+  #field {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    gap: clamp(8px, 2vw, 18px);
+    padding: 10px 14px;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .balloon {
+    position: relative;
+    border-radius: 50% 50% 50% 50% / 56% 56% 44% 44%;
+    box-shadow: inset -6px -8px 14px rgba(0,0,0,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    animation: float 2.6s ease-in-out infinite;
+    transition: transform 0.15s;
+  }
+  /* the knot + string */
+  .balloon::after {
+    content: "";
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    width: 2px;
+    height: 16px;
+    background: rgba(255,255,255,0.7);
+    transform: translateX(-50%);
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0) rotate(-2deg); }
+    50%     { transform: translateY(-10px) rotate(2deg); }
+  }
+  .balloon .cnt {
+    color: #fff;
+    font-weight: 900;
+    font-family: "Arial Black", sans-serif;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .balloon.counted { animation: none; }
+  .balloon.counted .cnt { opacity: 1; transform: scale(1); }
+  .balloon.bump { transform: scale(1.22); }
+  .balloon.hint { animation: hintpulse 0.7s ease-in-out 2; }
+  @keyframes hintpulse {
+    0%,100% { transform: scale(1); }
+    50%     { transform: scale(1.18); }
+  }
+
+  #footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0 16px;
+  }
+  #autoBtn {
+    border: none;
+    border-radius: 30px;
+    background: #fff;
+    color: #e0457b;
+    font-size: clamp(18px, 4vw, 24px);
+    font-weight: 900;
+    padding: 12px 26px;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.2);
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.08s;
+  }
+  #autoBtn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0,0,0,0.2); }
+  html[data-theme="dark"] #autoBtn { background: #2d2d36; color: #ff8fb4; }
+  #hint {
+    color: #fff;
+    font-weight: 700;
+    font-size: clamp(13px, 3vw, 18px);
+    opacity: 0.9;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+  }
+
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.7s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0);      opacity: 1; }
+    to   { transform: translateY(105vh) rotate(380deg); opacity: 0.85; }
+  }
+</style>
+</head>
+<body>
+  <div id="head">
+    <div id="title">Count the balloons!</div>
+    <div id="target"><span id="bignum">1</span><span id="numword">One</span></div>
+  </div>
+  <div id="field"></div>
+  <div id="footer">
+    <button id="autoBtn">▶ Count for me</button>
+    <div id="hint">Tap each balloon to count!</div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const WORDS = ['', 'One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
+      'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen','Twenty'];
+    const COLORS = ['#ff5757','#ff9f1c','#ffd23f','#2ec4b6','#3a86ff','#8338ec','#ff6bb5','#06d6a0','#f15bb5','#4cc9f0'];
+    const MAX = 20;
+
+    const field = document.getElementById('field');
+    const bignum = document.getElementById('bignum');
+    const numword = document.getElementById('numword');
+    const autoBtn = document.getElementById('autoBtn');
+    const hint = document.getElementById('hint');
+
+    // Two laps: count 1->10 starting at one, then 11->20 starting at eleven.
+    // `start`..`end` is the range counted this round; balloons = end - start + 1.
+    let start = 1;         // first number this round (1 for ones, 11 for teens)
+    let end = 1;           // number we are counting up to this round
+    let counted = 0;       // how many balloons tapped so far
+    let locked = false;    // true while celebrating between rounds
+    let auto = false;      // hands-free "count for me" mode
+    let autoTimer = null;
+    let idleTimer = null;
+
+    // Size balloons so they comfortably fit as the count grows.
+    function balloonSize(n) {
+      return Math.max(46, Math.min(112, Math.round(116 - n * 3.4)));
+    }
+
+    function buildRound() {
+      locked = false;
+      counted = 0;
+      field.innerHTML = '';
+
+      const count = end - start + 1;
+
+      bignum.textContent = end;
+      numword.textContent = WORDS[end];
+      bignum.classList.remove('pop');
+      void bignum.offsetWidth;
+      bignum.classList.add('pop');
+
+      const size = balloonSize(count);
+      for (let i = 0; i < count; i++) {
+        const b = document.createElement('div');
+        b.className = 'balloon';
+        b.style.width = size + 'px';
+        b.style.height = Math.round(size * 1.18) + 'px';
+        const color = COLORS[i % COLORS.length];
+        b.style.background = `radial-gradient(circle at 32% 28%, #fff7, ${color})`;
+        b.style.animationDelay = (Math.random() * -2.6) + 's';
+        const cnt = document.createElement('span');
+        cnt.className = 'cnt';
+        cnt.style.fontSize = Math.round(size * 0.5) + 'px';
+        b.appendChild(cnt);
+        b.addEventListener('pointerdown', () => onTap(b));
+        field.appendChild(b);
+      }
+
+      // No spoken number at the start — the child counts up as they tap.
+      resetIdle();
+    }
+
+    // Mark one balloon as counted (used by both taps and auto mode).
+    function countBalloon(b, isAuto) {
+      counted++;
+      const shown = start + counted - 1;   // 1..10 on the first lap, 11..20 on the teens
+      b.classList.add('counted');
+      b.querySelector('.cnt').textContent = shown;
+      b.classList.add('bump');
+      setTimeout(() => b.classList.remove('bump'), 160);
+      KidsAudio.playPop();
+
+      const isLast = counted >= end - start + 1;
+      // On a tap, recite the running count from the start ("One, two, three")
+      // so the child hears the whole sequence build each time. Auto mode just
+      // says the next number, since the balloons pop in a steady stream.
+      let phrase = isAuto ? WORDS[shown] : WORDS.slice(start, shown + 1).join(', ');
+      if (isLast) phrase += ', well done';   // celebrate finishing the round
+      KidsAudio.speak(phrase);
+
+      if (isLast) finishRound();
+    }
+
+    function onTap(b) {
+      try { KidsAudio.getAudio(); } catch (e) {}
+      if (auto) cancelAuto();          // child takes over from auto mode
+      if (locked || b.classList.contains('counted')) return;
+      resetIdle();
+      countBalloon(b, false);
+    }
+
+    function finishRound() {
+      locked = true;
+      clearTimeout(idleTimer);
+      KidsAudio.playChime('yay');
+      confettiBurst();
+
+      const finishedAll = end >= MAX;
+      if (finishedAll) {
+        setTimeout(() => {
+          KidsAudio.playChime('yay');
+          KidsAudio.speak('You counted all the way to twenty! Hooray!');
+          confettiBurst();
+        }, 1700);
+      }
+      const delay = finishedAll ? 3400 : 1700;
+      setTimeout(() => {
+        if (finishedAll) { start = 1; end = 1; }         // loop back to the start
+        else if (end === 10) { start = 11; end = 11; }   // ones done -> start the teens at 11
+        else { end++; }                                  // next number, same lap
+        buildRound();
+        if (auto) scheduleAuto(700);
+      }, delay);
+    }
+
+    // ---- hands-free auto count ----
+    function nextUncounted() {
+      return field.querySelector('.balloon:not(.counted)');
+    }
+    function scheduleAuto(delay) {
+      clearTimeout(autoTimer);
+      autoTimer = setTimeout(autoStep, delay);
+    }
+    function autoStep() {
+      if (!auto || locked) return;
+      const b = nextUncounted();
+      if (b) {
+        countBalloon(b, true);
+        if (!locked) scheduleAuto(750);
+      }
+    }
+    function startAuto() {
+      auto = true;
+      autoBtn.textContent = '⏸ Stop';
+      clearTimeout(idleTimer);
+      scheduleAuto(400);
+    }
+    function cancelAuto() {
+      auto = false;
+      autoBtn.textContent = '▶ Count for me';
+      clearTimeout(autoTimer);
+      resetIdle();
+    }
+    autoBtn.addEventListener('click', () => {
+      try { KidsAudio.getAudio(); } catch (e) {}
+      auto ? cancelAuto() : startAuto();
+    });
+
+    // ---- gentle idle hint: nudge an uncounted balloon if nothing happens ----
+    function resetIdle() {
+      clearTimeout(idleTimer);
+      if (auto || locked) return;
+      idleTimer = setTimeout(() => {
+        const b = nextUncounted();
+        if (b) {
+          b.classList.add('hint');
+          setTimeout(() => b.classList.remove('hint'), 1500);
+        }
+        resetIdle();
+      }, 5000);
+    }
+
+    function confettiBurst() {
+      for (let i = 0; i < 28; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(['🎉','⭐','🎈','✨','🌈','💖']);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2300);
+      }
+    }
+
+    buildRound();
+  </script>
+</body>
+</html>

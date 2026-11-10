@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Opposites</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #fbc2eb 0%, #a6c1ee 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a2a4e 0%, #1e2a4e 100%); }
+  h1 { color:#4a2a5a; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; }
+  html[data-theme="dark"] h1 { color:#f0d9ff; }
+  #prompt { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  #bigEmoji { font-size:clamp(70px,20vw,120px); line-height:1; }
+  #bigWord { color:#4a2a5a; font-weight:900; font-size:clamp(26px,7vw,44px); text-transform:uppercase; letter-spacing:2px; }
+  html[data-theme="dark"] #bigWord { color:#fff; }
+  #choices { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; padding:20px 12px; }
+  .choice { border:none; border-radius:18px; background:#fff; color:#4a2a5a; font-weight:900; cursor:pointer;
+    box-shadow:0 7px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 20px; }
+  .choice .ce { font-size:clamp(44px,12vw,70px); line-height:1; }
+  .choice .cw { font-size:clamp(15px,4vw,20px); text-transform:uppercase; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#4a2a5a; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#f0d9ff; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="title">What is the opposite?</h1>
+  <div id="prompt"><div id="bigEmoji"></div><div id="bigWord"></div></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // Each pair is [word, emoji, oppositeWord, oppositeEmoji]
+    const PAIRS=[
+      ['hot','🔥','cold','🧊'], ['big','🐘','small','🐭'], ['up','⬆️','down','⬇️'],
+      ['fast','🐇','slow','🐢'], ['happy','😊','sad','😢'], ['day','☀️','night','🌙'],
+      ['wet','💧','dry','🏜️'], ['open','📖','closed','📕'], ['full','🥛','empty','🫙'],
+      ['loud','📢','quiet','🤫'], ['tall','🦒','short','🐹'], ['clean','🧼','dirty','🐷'],
+    ];
+    const bigEmoji=document.getElementById('bigEmoji'), bigWord=document.getElementById('bigWord'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function newRound(){
+      locked=false; choicesEl.innerHTML='';
+      const pair=KidsUtil.rand(PAIRS);
+      const flip=Math.random()<0.5; // sometimes ask from the other side
+      const word=flip?pair[2]:pair[0], emoji=flip?pair[3]:pair[1];
+      answer=flip?pair[0]:pair[2];
+      const ansEmoji=flip?pair[1]:pair[3];
+      bigEmoji.textContent=emoji; bigWord.textContent=word;
+      const opts=[[answer,ansEmoji]];
+      while(opts.length<3){
+        const p=KidsUtil.rand(PAIRS);
+        const side=Math.random()<0.5?0:2;
+        const w=p[side], e=p[side+1];
+        if(w!==word && w!==answer && !opts.some(o=>o[0]===w)) opts.push([w,e]);
+      }
+      KidsUtil.shuffle(opts).forEach(([w,e])=>{
+        const b=document.createElement('button'); b.className='choice';
+        b.innerHTML='<span class="ce">'+e+'</span><span class="cw">'+w+'</span>';
+        b.onclick=()=>pick(w,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('What is the opposite of '+word+'?');
+    }
+    function pick(w,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(w===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! The opposite of '+bigWord.textContent+' is '+answer+'!');
+        confetti(); setTimeout(newRound,2000);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Catch the Fruit</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #89f7fe 0%, #66a6ff 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #grass {
+    position: fixed;
+    bottom: 0;
+    width: 100vw;
+    height: 80px;
+    background: linear-gradient(180deg, #7ec850, #5cab38);
+    z-index: 2;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    font-size: clamp(24px, 4vw, 38px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 14px 0 0;
+  }
+  #scorebar {
+    text-align: center;
+    min-height: 44px;
+    font-size: 26px;
+    user-select: none;
+  }
+  #scorebar b {
+    color: white;
+    font-size: 38px;
+    vertical-align: middle;
+    margin-right: 10px;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+  }
+  .fruit {
+    position: fixed;
+    font-size: 64px;
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .fruit.caught { transition: transform 0.25s ease, opacity 0.25s; transform: scale(0); opacity: 0.4; }
+  .fruit.splat  { transition: transform 0.5s ease, opacity 0.7s; transform: scaleY(0.35) scaleX(1.3); opacity: 0; }
+  #basket {
+    position: fixed;
+    bottom: 26px;
+    font-size: 110px;
+    line-height: 1;
+    user-select: none;
+    z-index: 4;
+    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.25));
+  }
+  #basket.bump { animation: bump 0.25s ease; }
+  @keyframes bump {
+    0%,100% { transform: scale(1); }
+    50%     { transform: scale(1.15) rotate(-4deg); }
+  }
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.7s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0);      opacity: 1; }
+    to   { transform: translateY(105vh) rotate(380deg); opacity: 0.8; }
+  }
+</style>
+</head>
+<body>
+  <h1>Catch the fruit! 🧺</h1>
+  <div id="scorebar"><b id="num">0</b><span id="icons"></span></div>
+  <div id="grass"></div>
+  <div id="basket">🧺</div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const FRUITS = ['🍎', '🍌', '🍊', '🍓', '🍇', '🍐', '🍑', '🥭', '🍉'];
+    const WORDS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+
+    const basket = document.getElementById('basket');
+    const numEl = document.getElementById('num');
+    const iconsEl = document.getElementById('icons');
+
+    let pointerX = window.innerWidth / 2;
+    let basketX = pointerX;
+    let caught = 0;
+    let fruits = [];          // { el, x, y, v, rot, vr, done }
+    let speed = 130;          // px per second
+
+    window.addEventListener('pointermove', e => { pointerX = e.clientX; });
+    window.addEventListener('pointerdown', e => { pointerX = e.clientX; });
+
+    function spawnFruit() {
+      const el = document.createElement('div');
+      el.className = 'fruit';
+      el.textContent = KidsUtil.rand(FRUITS);
+      const x = 50 + Math.random() * (window.innerWidth - 130);
+      el.style.left = x + 'px';
+      el.style.top = '-70px';
+      document.body.appendChild(el);
+      fruits.push({ el, x, y: -70, v: speed * (0.9 + Math.random() * 0.25), rot: 0, vr: (Math.random() - 0.5) * 60, done: false });
+    }
+
+    function targetCount() { return caught >= 12 ? 2 : 1; }
+    setInterval(() => {
+      if (fruits.filter(f => !f.done).length < targetCount()) spawnFruit();
+    }, 700);
+
+    function catchFruit(f) {
+      f.done = true;
+      caught++;
+      speed = Math.min(300, speed + 6);
+      KidsAudio.playPop();
+      basket.classList.remove('bump');
+      void basket.offsetWidth;
+      basket.classList.add('bump');
+
+      // Fly into the basket
+      const br = basket.getBoundingClientRect();
+      f.el.classList.add('caught');
+      f.el.style.left = (br.left + br.width / 2 - 32) + 'px';
+      f.el.style.top  = (br.top + 10) + 'px';
+      setTimeout(() => f.el.remove(), 300);
+
+      numEl.textContent = caught;
+      iconsEl.textContent = (iconsEl.textContent + f.el.textContent).slice(-8);
+
+      if (caught % 5 === 0) {
+        KidsAudio.playChime('yay');
+        KidsAudio.speak(`${caught <= 10 ? WORDS[caught - 1] : caught} fruits! Amazing!`);
+        confettiBurst();
+      } else {
+        KidsAudio.speak(caught <= 10 ? WORDS[caught - 1] : String(caught));
+      }
+    }
+
+    function splat(f) {
+      f.done = true;
+      f.el.classList.add('splat');
+      setTimeout(() => f.el.remove(), 800);
+    }
+
+    let last = performance.now();
+    function loop(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+
+      // Basket follows the finger/mouse smoothly
+      basketX += (pointerX - basketX) * 0.18;
+      const bw = basket.offsetWidth;
+      const bx = Math.max(0, Math.min(window.innerWidth - bw, basketX - bw / 2));
+      basket.style.left = bx + 'px';
+      const basketCx = bx + bw / 2;
+      const catchY = window.innerHeight - 150;
+
+      fruits.forEach(f => {
+        if (f.done) return;
+        f.y += f.v * dt;
+        f.rot += f.vr * dt;
+        f.el.style.top = f.y + 'px';
+        f.el.style.transform = `rotate(${f.rot}deg)`;
+
+        if (f.y > catchY && f.y < catchY + 80 && Math.abs((f.x + 32) - basketCx) < 80) {
+          catchFruit(f);
+        } else if (f.y > window.innerHeight - 105) {
+          splat(f);
+        }
+      });
+      fruits = fruits.filter(f => document.body.contains(f.el));
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    function confettiBurst() {
+      for (let i = 0; i < 26; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(['🎉', '⭐', '🍎', '✨', '🎈']);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2300);
+      }
+    }
+
+    KidsAudio.speak('Catch the fruit with your basket!');
+  </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Odd or Even?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #12c2e9 0%, #c471ed 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0a3a46 0%, #3a1a4e 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #num { color:#fff; font-weight:900; font-size:clamp(60px,16vw,100px); line-height:1; text-shadow:3px 3px 0 rgba(0,0,0,.2); margin-bottom:6px; }
+  #dots { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; width:min(92vw,420px); margin-bottom:18px; min-height:56px; }
+  .pair { display:flex; flex-direction:column; gap:4px; }
+  .dot { width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 3px 6px rgba(0,0,0,.25); }
+  .dot.lonely { background:#ffd54f; animation:bounce .8s infinite; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  #choices { display:flex; gap:16px; justify-content:center; }
+  .choice { border:none; border-radius:18px; font-weight:900; cursor:pointer; color:#fff;
+    font-size:clamp(22px,6vw,32px); padding:16px 30px;
+    box-shadow:0 7px 0 rgba(0,0,0,.22); transition:transform .08s; font-family:inherit; }
+  #btnOdd { background:#f57f17; } #btnEven { background:#2e7d32; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Odd or even? Pair up the dots to see!</h1>
+  <div id="num"></div>
+  <div id="dots"></div>
+  <div id="choices">
+    <button class="choice" id="btnOdd">Odd</button>
+    <button class="choice" id="btnEven">Even</button>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const numEl=document.getElementById('num'), dotsEl=document.getElementById('dots'), scoreEl=document.getElementById('score');
+    let n, score=0, locked=false;
+
+    function newRound(){
+      locked=false; dotsEl.innerHTML='';
+      n=2+Math.floor(Math.random()*19); // 2..20
+      numEl.textContent=n;
+      // Show dots in pairs; a lonely dot means odd.
+      for(let i=0;i<Math.floor(n/2);i++){
+        const p=document.createElement('div'); p.className='pair';
+        p.innerHTML='<div class="dot"></div><div class="dot"></div>';
+        dotsEl.appendChild(p);
+      }
+      if(n%2===1){
+        const p=document.createElement('div'); p.className='pair';
+        p.innerHTML='<div class="dot lonely"></div>';
+        dotsEl.appendChild(p);
+      }
+      KidsAudio.speak('Is '+n+' odd or even?');
+    }
+    function pick(isOdd,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if((n%2===1)===isOdd){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        KidsAudio.playChime('yay');
+        KidsAudio.speak(n%2===1
+          ? 'Yes! '+n+' is odd — one dot has no partner!'
+          : 'Yes! '+n+' is even — every dot has a partner!');
+        confetti(); setTimeout(newRound,2300);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Look at the dots. Does every dot have a partner?');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    document.getElementById('btnOdd').onclick=e=>pick(true,e.currentTarget);
+    document.getElementById('btnEven').onclick=e=>pick(false,e.currentTarget);
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

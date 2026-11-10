@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Count It Out</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#fff1c1,#fda085); --av-ink: #6b3a12; }
+  .tray { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; min-height:clamp(60px,16vmin,90px); max-width:620px; }
+  .fr { font-size:clamp(40px,11vmin,66px); border:none; background:none; cursor:pointer; padding:2px; line-height:1; transition:transform .1s; }
+  .fr:active { transform:scale(.85); }
+  .basket { width:min(92vw,540px); min-height:clamp(110px,26vmin,170px); background:repeating-linear-gradient(45deg,#c58a4e 0 12px,#b9783f 12px 24px);
+    border-radius:18px 18px 70px 70px; border:6px solid #8a5526; display:flex; align-items:center; justify-content:center; position:relative; }
+  .basket.wrong { animation:av-shake .35s; }
+  .in { display:flex; flex-wrap:wrap; justify-content:center; gap:2px; padding:8px; }
+  .num { display:inline-block; background:#fff; color:#d35400; border-radius:14px; padding:0 14px; font-size:1.5em; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: cardinality — count out exactly N objects (and stop).
+    // Each tap counts aloud cumulatively ("one, two, three").
+    const K = KidsKit, U = KidsUtil, A = KidsAudio;
+    const W = ['zero','one','two','three','four','five','six','seven','eight','nine','ten'];
+    const FRUITS = [['apple','apples','🍎'],['banana','bananas','🍌'],['orange','oranges','🍊'],['mango','mangoes','🥭'],
+      ['strawberry','strawberries','🍓'],['carrot','carrots','🥕'],['ball','balls','⚽'],['fish','fish','🐟']];
+    const ui = K.setup();
+    const tray = K.el('div', 'tray'), basket = K.el('div', 'basket'), inEl = K.el('div', 'in');
+    const done = K.el('button', 'av-btn', '✅ Done!');
+    basket.appendChild(inEl); ui.stage.append(tray, basket, done);
+    let target = 0, fruit, stars = 0, locked = false;
+
+    const countLine = n => n <= 5 ? W.slice(1, n + 1).join(', ') : W[n];
+    const name = n => n === 1 ? fruit[0] : fruit[1];
+
+    function ask() {
+      ui.setTitle('Put <span class="num">' + target + '</span> ' + fruit[2] + ' in the basket');
+      K.say('Put ' + W[target] + ' ' + name(target) + ' in the basket. Then press done.');
+    }
+    function newRound() {
+      locked = false;
+      const max = stars < 4 ? 3 : stars < 10 ? 5 : 8;   // grows as he gets them right
+      let t; do { t = 1 + Math.floor(Math.random() * max); } while (t === target);
+      target = t; fruit = U.rand(FRUITS);
+      tray.innerHTML = ''; inEl.innerHTML = '';
+      const total = Math.min(10, target + 2 + Math.floor(Math.random() * 2));
+      for (let i = 0; i < total; i++) {
+        const b = K.el('button', 'fr', fruit[2]);
+        b.onclick = () => move(b);
+        tray.appendChild(b);
+      }
+      ask();
+    }
+    function move(b) {
+      if (locked) return;
+      K.wake(); A.playPop();
+      (b.parentNode === tray ? inEl : tray).appendChild(b);
+      const n = inEl.children.length;
+      K.say(n ? countLine(n) : 'zero');
+    }
+    done.onclick = () => {
+      if (locked) return;
+      K.wake();
+      const n = inEl.children.length;
+      if (n === target) {
+        locked = true; stars = K.star(); A.playChime('yay'); K.confetti();
+        const line = 'Yes! ' + countLine(n) + '. ' + W[n] + ' ' + name(n) + '!';
+        K.say(line); setTimeout(newRound, K.speakMs(line) + 600);
+      } else {
+        K.wrong(basket);
+        K.say(n === 0 ? 'The basket is empty. Tap the ' + fruit[1] + ' to put them in.'
+          : n > target ? 'That is ' + W[n] + '. Too many! We need ' + W[target] + '. Tap some to take them out.'
+          : 'That is ' + W[n] + '. We need ' + W[target] + '. Add some more.');
+      }
+    };
+    ui.titleEl.onclick = () => { K.wake(); ask(); };
+    newRound();
+  </script>
+</body>
+</html>

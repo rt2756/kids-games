@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Build a Sentence</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #11998e 0%, #38ef7d 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center;
+  }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0a3a36 0%, #0f3a22 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(20px,4.6vw,32px); margin:0; padding:84px 16px 6px; text-shadow:2px 2px 0 rgba(0,0,0,.18); }
+  #sentence { min-height:clamp(60px,16vw,90px); width:min(92vw,640px); margin:8px; padding:10px;
+    border:4px dashed rgba(255,255,255,.7); border-radius:18px; display:flex; flex-wrap:wrap; gap:8px; align-content:center; justify-content:center; }
+  #bank { width:min(92vw,640px); display:flex; flex-wrap:wrap; gap:10px; justify-content:center; padding:10px; }
+  .word { background:#fff; color:#0b7a52; font-weight:900; font-size:clamp(18px,5vw,30px); padding:10px 16px;
+    border-radius:14px; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.16); user-select:none; transition:transform .08s; }
+  .word:active { transform:translateY(3px); }
+  #sentence .word { background:#eafff4; }
+  #sentence.wrong { animation:shake .4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #hint { color:#fff; font-weight:800; font-size:clamp(13px,3.2vw,18px); opacity:.9; padding-bottom:6px; }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:28px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Put the words in order</h1>
+  <div id="sentence"></div>
+  <div id="bank"></div>
+  <div id="hint">Tap words to build the sentence. Tap 🔊 to hear it.</div>
+  <button id="hear" style="border:none;background:rgba(255,255,255,.9);color:#0b7a52;font-weight:800;padding:8px 18px;border-radius:999px;cursor:pointer;margin-bottom:14px;">🔊 Hear it</button>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const SENTENCES=[
+      'The cat is big.','I like to play.','We go to school.','The sun is hot.',
+      'My dog can run.','She has a red ball.','The fish can swim.','We love our mom.',
+    ];
+    const sentenceEl=document.getElementById('sentence'), bankEl=document.getElementById('bank'), scoreEl=document.getElementById('score');
+    let words, placed, score=0, idx=0, locked=false;
+
+    function newRound(){
+      locked=false;
+      const s=SENTENCES[idx%SENTENCES.length]; idx++;
+      words=s.replace('.','').split(' ').concat(['.']);
+      // keep period attached to last word for display
+      words=s.split(' ');
+      placed=[];
+      sentenceEl.innerHTML='';
+      bankEl.innerHTML='';
+      KidsUtil.shuffle(words.map((w,i)=>({w,i}))).forEach(({w,i})=>{
+        const d=document.createElement('div'); d.className='word'; d.textContent=w; d.dataset.idx=i;
+        d.onclick=()=>toBank(d); bankEl.appendChild(d);
+      });
+      KidsAudio.speak('Put the words in order.');
+    }
+
+    function toBank(d){ // d is in bank -> move to sentence
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      d.onclick=()=>toBankBack(d);
+      sentenceEl.appendChild(d);
+      KidsAudio.speak(d.textContent.replace('.',''));
+      check();
+    }
+    function toBankBack(d){ if(locked) return; d.onclick=()=>toBank(d); bankEl.appendChild(d); }
+
+    function check(){
+      const inS=[...sentenceEl.children];
+      if(inS.length!==words.length) return;
+      const ok=inS.every((d,i)=>d.textContent===words[i]);
+      if(ok){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        KidsAudio.playChime('yay'); KidsAudio.speak(words.join(' '));
+        confetti(); setTimeout(newRound,2200);
+      } else {
+        sentenceEl.classList.add('wrong'); KidsAudio.playChime('uhoh'); KidsAudio.speak('Not yet, try again.');
+        setTimeout(()=>sentenceEl.classList.remove('wrong'),450);
+      }
+    }
+
+    document.getElementById('hear').onclick=()=>{ try{KidsAudio.getAudio();}catch(e){} KidsAudio.speak(words.join(' ')); };
+    function confetti(){ for(let i=0;i<24;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

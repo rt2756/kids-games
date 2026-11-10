@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Copy the Tune</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#e0c3fc,#8ec5fc); --av-ink: #3a2466; }
+  .pads { display:grid; grid-template-columns:1fr 1fr; gap:clamp(10px,3vmin,18px); }
+  .pad { width:clamp(110px,30vmin,190px); height:clamp(110px,30vmin,190px); border-radius:28px; border:none; cursor:pointer;
+    font-size:clamp(50px,13vmin,84px); line-height:1; box-shadow:0 8px 0 rgba(0,0,0,.2); transition:transform .1s, filter .1s, box-shadow .1s; }
+  .pad.lit { transform:scale(1.1); filter:brightness(1.3); box-shadow:0 0 0 8px #fff, 0 8px 0 rgba(0,0,0,.2); }
+  .pad.wrong { animation:av-shake .35s; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: listening and auditory memory — hear a short tune, play it back.
+    // Starts with one note and only grows when he gets it right; a miss just replays it.
+    const K = KidsKit, A = KidsAudio;
+    const PADS = [['🐸','#66bb6a',261.63],['🐦','#42a5f5',329.63],['🐱','#ffa726',392.00],['🐝','#ffee58',523.25]];
+    const ui = K.setup({ title: 'Listen, then copy the tune' });
+    const board = K.el('div', 'pads'), start = K.el('button', 'av-btn', '▶️ Play');
+    ui.stage.append(board, start);
+    const btns = PADS.map((p, i) => {
+      const b = K.el('button', 'pad', p[0]);
+      b.style.background = p[1]; b.onclick = () => tap(i);
+      board.appendChild(b); return b;
+    });
+    let seq = [], pos = 0, listening = false, playing = false, wins = 0;
+
+    function tone(i, dur = 0.45) {
+      const ctx = A.getAudio(), t = ctx.currentTime;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = PADS[i][2];
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + dur + 0.05);
+    }
+    function flash(i) { btns[i].classList.add('lit'); setTimeout(() => btns[i].classList.remove('lit'), 380); }
+
+    function playSeq() {
+      playing = true; listening = false; ui.setTitle('👂 Listen…');
+      seq.forEach((n, k) => setTimeout(() => { tone(n); flash(n); }, 900 + k * 650));
+      setTimeout(() => { playing = false; listening = true; pos = 0; ui.setTitle('👉 Your turn!'); K.say('Your turn!'); }, 900 + seq.length * 650);
+    }
+    function newTune() {
+      const len = Math.min(5, 1 + Math.floor(wins / 2));   // 1, 1, 2, 2, 3, 3 …
+      seq = []; for (let k = 0; k < len; k++) seq.push(Math.floor(Math.random() * 4));
+      K.say('Listen!'); playSeq();
+    }
+    function tap(i) {
+      if (playing) return;
+      K.wake(); tone(i); flash(i);
+      if (!listening) return;                               // free play before the game starts
+      if (i === seq[pos]) {
+        if (++pos === seq.length) {
+          listening = false; wins++; K.star(); K.confetti();
+          setTimeout(() => A.playChime('yay'), 450);
+          K.say(seq.length > 1 ? 'Well done! You played ' + seq.length + ' notes!' : 'Well done!');
+          setTimeout(newTune, 2600);
+        }
+      } else {
+        listening = false; K.wrong(btns[i]);
+        K.say('Listen again.'); setTimeout(playSeq, 1500);
+      }
+    }
+    start.onclick = () => { K.wake(); start.style.display = 'none'; newTune(); };
+  </script>
+</body>
+</html>

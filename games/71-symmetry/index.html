@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Symmetry</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #5f72bd 0%, #9b23ea 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #1a2040 0%, #2a0c40 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.6vw,28px); margin:0; position:fixed; top:92px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #q { color:#fff; font-weight:800; font-size:clamp(17px,4.4vw,23px); margin:6px 16px 10px; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #choices { display:flex; gap:clamp(14px,5vw,32px); flex-wrap:wrap; justify-content:center; padding:6px 10px; }
+  .choice { position:relative; width:clamp(96px,26vw,150px); height:clamp(96px,26vw,150px); border-radius:24px; background:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:clamp(54px,15vw,96px); cursor:pointer;
+    box-shadow:0 8px 0 rgba(0,0,0,.2); transition:transform .08s; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; }
+  .choice.right { background:#b6f09c; }
+  .choice.right::after { content:''; position:absolute; top:8px; bottom:8px; left:50%; width:3px; background:#2d7a00; transform:translateX(-50%); opacity:.6; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>🦋 Symmetry</h1>
+  <div id="q">Which one is symmetrical — the same on both sides?</div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const SYM=['🦋','❤️','⭐','🌼','🔷','⚽','🎄','👓','🏵️','🔶','💎','🌳'];
+    const ASYM=['🍌','🦶','🐟','👢','🪥','🔨','🎸','🦐','🛴','🐊','🥄','🦷','🧦','🍀'];
+    const choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+    function newRound(){
+      locked=false;
+      answer=KidsUtil.rand(SYM);
+      const distract=KidsUtil.shuffle(ASYM).slice(0,2);
+      choicesEl.innerHTML='';
+      KidsUtil.shuffle([answer,...distract]).forEach(e=>{ const c=document.createElement('div'); c.className='choice'; c.textContent=e; c.onclick=()=>pick(e,c); choicesEl.appendChild(c); });
+      KidsAudio.speak('Which one is symmetrical?');
+    }
+    function pick(e,c){
+      if(locked) return; locked=true; try{KidsAudio.getAudio();}catch(ex){}
+      if(e===answer){ c.classList.add('right'); score++; scoreEl.textContent='⭐ '+score; KidsAudio.playChime('yay'); KidsAudio.speak('Yes! Both sides match!'); confetti(); setTimeout(newRound,1800);
+      } else { c.classList.add('wrong'); KidsAudio.playChime('uhoh'); [...choicesEl.children].forEach(x=>{ if(x.textContent===answer) x.classList.add('right'); }); KidsAudio.speak('This one is symmetrical.'); setTimeout(newRound,2000); }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🦋','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

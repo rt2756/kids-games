@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Who Eats What?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#d4fc79,#96e6a1); --av-ink: #1e5631; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: animals and their food.
+    const K = KidsKit, U = KidsUtil;
+    // [animal, emoji, food, food emoji, foods to keep out of the choices because they would also be right]
+    const PAIRS = [
+      ['monkey','🐒','a banana','🍌',['nuts','leaves']], ['rabbit','🐰','a carrot','🥕',['grass','leaves']],
+      ['dog','🐶','a bone','🦴',['fish']], ['cat','🐱','fish','🐟',[]], ['mouse','🐭','cheese','🧀',['nuts']],
+      ['bee','🐝','nectar from flowers','🌸',['honey']], ['panda','🐼','bamboo','🎋',['leaves','grass']],
+      ['squirrel','🐿️','nuts','🌰',[]], ['cow','🐄','grass','🌾',['leaves','bamboo']],
+      ['bird','🐦','a worm','🪱',['nuts']], ['bear','🐻','honey','🍯',['fish','nuts']], ['elephant','🐘','leaves','🌿',['grass','a banana','bamboo']],
+    ];
+    const draw = K.bag(PAIRS);
+    K.quiz({ next(round) {
+      const p = draw();
+      const others = U.shuffle(PAIRS.filter(x => x !== p && !p[4].includes(x[2]))).slice(0, round < 4 ? 1 : 2);
+      return {
+        title: 'What does the ' + p[0] + ' eat?',
+        show: '<div class="av-big">' + p[1] + '</div>',
+        say: 'What does the ' + p[0] + ' like to eat?',
+        choices: U.shuffle([p].concat(others)).map(x => ({ html: K.card(x[3]), ok: x === p,
+          say: 'That is for the ' + x[0] + '. What does the ' + p[0] + ' eat?' })),
+        praise: 'Yum! The ' + p[0] + ' eats ' + p[2] + '!',
+      };
+    } });
+  </script>
+</body>
+</html>

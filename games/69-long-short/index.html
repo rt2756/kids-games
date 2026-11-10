@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Long or Short?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #ffd86f 0%, #fc6262 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a3010 0%, #3a1414 100%); }
+  h1 { color:#7a2a00; font-weight:900; font-size:clamp(20px,5.4vw,34px); margin:0; position:fixed; top:94px; left:0; right:0; text-align:center; }
+  html[data-theme="dark"] h1 { color:#ffd9b0; }
+  #row { display:flex; gap:6vw; align-items:center; justify-content:center; min-height:46vh; }
+  .item { display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; transition:transform .08s; background:rgba(255,255,255,.45); border-radius:22px; padding:14px; }
+  .item:active { transform:scale(.95); }
+  .item .ie { line-height:1; }
+  .item .il { font-weight:900; color:#7a2a00; font-size:clamp(15px,3.8vw,20px); }
+  .item.wrong { animation:shake .4s; }
+  .item.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#7a2a00; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#ffd9b0; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="prompt">Tap the longer one!</h1>
+  <div id="row">
+    <div class="item" id="big"><span class="ie"></span><span class="il"></span></div>
+    <div class="item" id="small"><span class="ie"></span><span class="il"></span></div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // each: [emoji, name, dimension]  big item listed first
+    const PAIRS=[
+      ['🐍','snake','🐜','ant','long'],
+      ['🚂','train','🚗','car','long'],
+      ['✏️','pencil','🖍️','crayon','long'],
+      ['🦒','giraffe','🐕','dog','tall'],
+      ['🌳','tree','🌷','flower','tall'],
+      ['🚌','bus','🚲','bicycle','long'],
+      ['🏢','building','🏠','house','tall'],
+      ['🐘','elephant','🐁','mouse','big'],
+    ];
+    const bigEl=document.getElementById('big'), smallEl=document.getElementById('small'), promptEl=document.getElementById('prompt'), scoreEl=document.getElementById('score');
+    let wantBig, score=0, locked=false;
+    const COMP={ long:['longer','shorter'], tall:['taller','shorter'], big:['bigger','smaller'] };
+
+    function newRound(){
+      locked=false;
+      const p=KidsUtil.rand(PAIRS);
+      const dim=p[4];
+      wantBig=Math.random()<0.5; // ask for bigger or smaller
+      promptEl.textContent='Tap the '+(wantBig?COMP[dim][0]:COMP[dim][1])+' one!';
+      // place big/small randomly left/right
+      const bigFirst=Math.random()<0.5;
+      const A=bigEl, B=smallEl;
+      const bigSize='clamp(70px,22vw,150px)', smallSize='clamp(34px,9vw,64px)';
+      A.querySelector('.ie').textContent=p[0]; A.querySelector('.ie').style.fontSize=bigSize; A.querySelector('.il').textContent=p[1]; A.dataset.big='1';
+      B.querySelector('.ie').textContent=p[2]; B.querySelector('.ie').style.fontSize=smallSize; B.querySelector('.il').textContent=p[3]; B.dataset.big='0';
+      A.className='item'; B.className='item';
+      // shuffle DOM order
+      const row=document.getElementById('row'); row.innerHTML=''; (bigFirst?[A,B]:[B,A]).forEach(n=>row.appendChild(n));
+      KidsAudio.speak(promptEl.textContent);
+    }
+    [bigEl,smallEl].forEach(el=>{
+      el.onclick=()=>{
+        if(locked) return; try{KidsAudio.getAudio();}catch(e){}
+        const isBig=el.dataset.big==='1';
+        if(isBig===wantBig){ locked=true; el.classList.add('right'); score++; scoreEl.textContent='⭐ '+score; KidsAudio.playChime('yay'); KidsAudio.speak('Yes!'); confetti(); setTimeout(newRound,1700);
+        } else { el.classList.add('wrong'); KidsAudio.playChime('uhoh'); KidsAudio.speak('Try again.'); setTimeout(()=>el.classList.remove('wrong'),450); }
+      };
+    });
+    function confetti(){ for(let i=0;i<20;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

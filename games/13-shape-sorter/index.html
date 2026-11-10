@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Shape Sorter</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #f6d365 0%, #fda085 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 16px 0 10px;
+  }
+  #board {
+    margin: 10px auto 0;
+    width: min(92vw, 760px);
+    background: linear-gradient(180deg, #c08c54 0%, #a9743e 100%);
+    border: 8px solid #8a5a2a;
+    border-radius: 28px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25), inset 0 4px 10px rgba(255,255,255,0.25);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: clamp(14px, 3vh, 30px) 8px;
+    gap: 6px;
+  }
+  .hole {
+    width: clamp(70px, 18vw, 130px);
+    height: clamp(70px, 18vw, 130px);
+  }
+  .hole svg { width: 100%; height: 100%; }
+  .hole svg * { fill: rgba(40, 20, 5, 0.55); }
+  .hole.filled svg * { fill: rgba(40, 20, 5, 0.2); }
+
+  #tray { flex: 1; position: relative; }
+
+  .piece {
+    position: fixed;
+    width: clamp(70px, 18vw, 120px);
+    height: clamp(70px, 18vw, 120px);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    z-index: 20;
+    filter: drop-shadow(0 6px 8px rgba(0,0,0,0.3));
+    transition: transform 0.12s;
+  }
+  .piece svg { width: 100%; height: 100%; overflow: visible; }
+  .piece.dragging { cursor: grabbing; transform: scale(1.18); z-index: 30; }
+  .piece.snapping { transition: left 0.18s ease, top 0.18s ease; }
+  .piece.placed { pointer-events: none; z-index: 5; filter: none; }
+  .piece.placed svg { animation: settle 0.4s ease; }
+  @keyframes settle {
+    0%   { transform: scale(1.2); }
+    60%  { transform: scale(0.92); }
+    100% { transform: scale(1); }
+  }
+  .piece.wrong { animation: shake 0.4s; }
+  @keyframes shake {
+    0%,100% { margin-left: 0; }
+    25%     { margin-left: -14px; }
+    75%     { margin-left: 14px; }
+  }
+
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.7s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0);      opacity: 1; }
+    to   { transform: translateY(105vh) rotate(380deg); opacity: 0.8; }
+  }
+</style>
+</head>
+<body>
+  <h1>Put each shape in its hole! 🔷</h1>
+  <div id="board"></div>
+  <div id="tray"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const SHAPES = {
+      circle:   '<circle cx="50" cy="50" r="42"/>',
+      square:   '<rect x="10" y="10" width="80" height="80" rx="10"/>',
+      triangle: '<polygon points="50,8 92,88 8,88"/>',
+      star:     '<polygon points="50,5 61,38 96,38 68,59 78,93 50,72 22,93 32,59 4,38 39,38"/>',
+      heart:    '<path d="M50 88 C 20 64, 4 44, 12 26 C 18 12, 38 10, 50 26 C 62 10, 82 12, 88 26 C 96 44, 80 64, 50 88 Z"/>',
+      diamond:  '<polygon points="50,6 90,50 50,94 10,50"/>',
+      oval:     '<ellipse cx="50" cy="50" rx="44" ry="30"/>',
+      plus:     '<path d="M35 10 h30 v25 h25 v30 h-25 v25 h-30 v-25 h-25 v-30 h25 Z"/>',
+    };
+    const COLORS = ['#ff4757', '#1e90ff', '#feca57', '#2ed573', '#9b59b6', '#ff7f50', '#ff6b9d'];
+    const N = 4;
+
+    const board = document.getElementById('board');
+    let pieces = [];   // { el, shape, placed }
+    let holes = [];    // { el, shape }
+
+    function svgFor(shape, color) {
+      const body = SHAPES[shape].replace('/>', ` fill="${color}" stroke="rgba(0,0,0,0.25)" stroke-width="4"/>`);
+      return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${color ? body : SHAPES[shape]}</svg>`;
+    }
+
+    function trayPos(i) {
+      const w = document.querySelector('.piece')?.offsetWidth || 110;
+      return {
+        x: (i + 0.5) * (window.innerWidth / N) - w / 2,
+        y: window.innerHeight - w - 30,
+      };
+    }
+
+    function newRound() {
+      board.innerHTML = '';
+      pieces.forEach(p => p.el.remove());
+      pieces = []; holes = [];
+
+      const names = KidsUtil.shuffle(Object.keys(SHAPES)).slice(0, N);
+      const colors = KidsUtil.shuffle(COLORS).slice(0, N);
+
+      names.forEach(shape => {
+        const h = document.createElement('div');
+        h.className = 'hole';
+        h.innerHTML = svgFor(shape);
+        board.appendChild(h);
+        holes.push({ el: h, shape });
+      });
+
+      KidsUtil.shuffle(names).forEach((shape, i) => {
+        const el = document.createElement('div');
+        el.className = 'piece';
+        el.innerHTML = svgFor(shape, colors[names.indexOf(shape)]);
+        document.body.appendChild(el);
+        const p = trayPos(i);
+        el.style.left = p.x + 'px';
+        el.style.top  = p.y + 'px';
+        el.dataset.slot = i;
+        const piece = { el, shape, placed: false };
+        makeDraggable(piece);
+        pieces.push(piece);
+      });
+    }
+
+    function holeCenter(h) {
+      const r = h.el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
+
+    function makeDraggable(piece) {
+      const el = piece.el;
+      let ox = 0, oy = 0, dragging = false;
+      el.addEventListener('pointerdown', (e) => {
+        if (piece.placed) return;
+        dragging = true;
+        el.classList.add('dragging');
+        el.classList.remove('snapping');
+        const rect = el.getBoundingClientRect();
+        ox = e.clientX - rect.left;
+        oy = e.clientY - rect.top;
+        e.preventDefault();
+
+        const onMove = (ev) => {
+          if (!dragging) return;
+          el.style.left = (ev.clientX - ox) + 'px';
+          el.style.top  = (ev.clientY - oy) + 'px';
+        };
+        const onUp = (ev) => {
+          if (!dragging) return;
+          dragging = false;
+          el.classList.remove('dragging');
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+
+          const r = el.getBoundingClientRect();
+          const c = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+          let nearest = null, nd = Infinity;
+          holes.forEach(h => {
+            const hc = holeCenter(h);
+            const d = Math.hypot(c.x - hc.x, c.y - hc.y);
+            if (d < nd) { nd = d; nearest = h; }
+          });
+
+          if (nearest && nd < 75 && nearest.shape === piece.shape) {
+            place(piece, nearest);
+          } else if (nearest && nd < 75) {
+            // Wrong hole: shake, then back to the tray.
+            el.classList.add('wrong');
+            KidsAudio.playChime('uhoh');
+            KidsAudio.speak('Almost! Try another hole.');
+            setTimeout(() => { el.classList.remove('wrong'); back(el); }, 420);
+          } else {
+            back(el);
+          }
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      });
+    }
+
+    function back(el) {
+      el.classList.add('snapping');
+      const p = trayPos(+el.dataset.slot);
+      el.style.left = p.x + 'px';
+      el.style.top  = p.y + 'px';
+    }
+
+    function place(piece, hole) {
+      piece.placed = true;
+      hole.el.classList.add('filled');
+      const el = piece.el;
+      el.classList.add('snapping');
+      const hr = hole.el.getBoundingClientRect();
+      el.style.left = hr.left + 'px';
+      el.style.top  = hr.top + 'px';
+      el.style.width  = hr.width + 'px';
+      el.style.height = hr.height + 'px';
+      setTimeout(() => el.classList.add('placed'), 180);
+      KidsAudio.playPop();
+      KidsAudio.speak(piece.shape + '!');
+
+      if (pieces.every(p => p.placed)) {
+        setTimeout(() => {
+          KidsAudio.playChime('yay');
+          KidsAudio.speak('You did it! All the shapes!');
+          confettiBurst();
+          setTimeout(newRound, 2300);
+        }, 500);
+      }
+    }
+
+    function confettiBurst() {
+      const emo = ['🎉', '⭐', '🔷', '💖', '✨'];
+      for (let i = 0; i < 28; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(emo);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2300);
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      pieces.forEach((p) => {
+        if (p.placed) {
+          const hole = holes.find(h => h.shape === p.shape);
+          const hr = hole.el.getBoundingClientRect();
+          p.el.style.left = hr.left + 'px';
+          p.el.style.top  = hr.top + 'px';
+        } else {
+          back(p.el);
+        }
+      });
+    });
+
+    newRound();
+    KidsAudio.speak('Put each shape in its hole!');
+  </script>
+</body>
+</html>

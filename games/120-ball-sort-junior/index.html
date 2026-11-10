@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Sort the Balls</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<link rel="stylesheet" href="../../shared/tubes.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#2b5876,#4e4376); --av-ink: #fff; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script src="../../shared/tubes.js"></script>
+  <script>
+    // Concept: sorting by colour. Few colours, short tubes, colours named aloud,
+    // and the tubes a ball may go into light up.
+    KidsTubes.start({
+      id: 'ball-sort-junior', mode: 'ball', junior: true,
+      intro: 'Put the same colours together. Tap a ball, then tap a tube.',
+      level: n => n < 2 ? { n: 2, cap: 3, empties: 1 } : n < 5 ? { n: 3, cap: 3, empties: 2 }
+        : n < 9 ? { n: 4, cap: 3, empties: 2 } : { n: Math.min(4 + Math.floor((n - 9) / 3), 6), cap: 4, empties: 2 }
+    });
+  </script>
+</body>
+</html>

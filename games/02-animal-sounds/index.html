@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Animal Sounds</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #a8e063 0%, #56ab2f 100%);
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  h1 {
+    color: white;
+    font-size: clamp(32px, 5vw, 56px);
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 0 0 20px;
+    font-weight: 900;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 18px;
+    padding: 20px;
+    max-width: 900px;
+    width: 100%;
+  }
+  .card {
+    background: white;
+    border-radius: 32px;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    user-select: none;
+    transition: transform 0.1s;
+    border: 6px solid white;
+  }
+  .card:active { transform: scale(0.92); }
+  .card.playing {
+    animation: wiggle 0.5s ease-in-out;
+    border-color: #ffd700;
+  }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0); }
+    25%      { transform: rotate(-6deg) scale(1.05); }
+    75%      { transform: rotate(6deg)  scale(1.05); }
+  }
+  .emoji {
+    font-size: clamp(60px, 10vw, 110px);
+    line-height: 1;
+  }
+  .label {
+    font-size: clamp(16px, 2.2vw, 24px);
+    font-weight: 900;
+    color: #333;
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Small screens (phones): keep everything on screen and clear of the back button. */
+  @media (max-width: 520px) {
+    h1 { font-size: 24px; margin: 76px 0 4px; }
+    .grid { grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px; }
+    .card { border-radius: 20px; border-width: 4px; }
+    .emoji { font-size: 44px; }
+    .label { font-size: 12px; margin-top: 2px; }
+  }
+</style>
+</head>
+<body>
+  <h1>Tap an animal!</h1>
+  <div class="grid" id="grid"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const ANIMALS = [
+      { name: 'Cow',      emoji: '🐮', say: 'Cow! Moooo',         file: 'sounds/cow.ogg'      },
+      { name: 'Dog',      emoji: '🐶', say: 'Dog! Woof woof',     file: 'sounds/dog.ogg'      },
+      { name: 'Cat',      emoji: '🐱', say: 'Cat! Meow',          file: 'sounds/cat.ogg'      },
+      { name: 'Duck',     emoji: '🦆', say: 'Duck! Quack quack',  file: 'sounds/duck.ogg'     },
+      { name: 'Sheep',    emoji: '🐑', say: 'Sheep! Baaaa',       file: 'sounds/sheep.ogg'    },
+      { name: 'Goat',     emoji: '🐐', say: 'Goat! Baaaa',        file: 'sounds/goat.ogg'     },
+      { name: 'Pig',      emoji: '🐷', say: 'Pig! Oink oink',     file: 'sounds/pig.ogg'      },
+      { name: 'Horse',    emoji: '🐴', say: 'Horse! Neigh',       file: 'sounds/horse.ogg'    },
+      { name: 'Rooster',  emoji: '🐓', say: 'Rooster! Cock a doodle doo', file: 'sounds/rooster.ogg' },
+      { name: 'Elephant', emoji: '🐘', say: 'Elephant!',          file: 'sounds/elephant.ogg' },
+    ];
+
+    const grid = document.getElementById('grid');
+    let currentAudio = null;
+
+    function stopCurrent() {
+      if (currentAudio) {
+        try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
+        currentAudio = null;
+      }
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+
+    ANIMALS.forEach(a => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<div class="emoji">${a.emoji}</div><div class="label">${a.name}</div>`;
+
+      const play = (e) => {
+        e.preventDefault();
+        stopCurrent();
+        card.classList.remove('playing');
+        void card.offsetWidth; // restart animation
+        card.classList.add('playing');
+
+        // Speak name first, then play sound (overlap is fine)
+        KidsAudio.speak(a.say);
+
+        const audio = new Audio(a.file);
+        audio.volume = 0.9;
+        audio.play().catch(() => {
+          // File missing or blocked — fall back to a friendly chime
+          KidsAudio.playChime('yay');
+        });
+        currentAudio = audio;
+      };
+      card.addEventListener('click', play);
+      card.addEventListener('touchstart', play, { passive: false });
+      grid.appendChild(card);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+/* Layout + feedback styles for games built on /shared/kit.js.
+   A kit game sets two CSS variables on <body> and gets the rest for free:
+     --av-bg   page background (any gradient)
+     --av-ink  colour of the title / score text                       */
+body.av {
+  background: var(--av-bg, linear-gradient(180deg, #a1c4fd, #c2e9fb));
+  height: 100vh; width: 100vw; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 88px 12px 14px; color: var(--av-ink, #2d3a5a);
+}
+html[data-theme="dark"] body.av { background: linear-gradient(180deg, #1c2233, #2b2440); color: #eef; }
+
+.av-score { position: fixed; top: 22px; left: 50%; transform: translateX(-50%); z-index: 5;
+  font-weight: 900; font-size: 20px; background: rgba(255,255,255,.75); color: #333;
+  padding: 6px 16px; border-radius: 999px; box-shadow: 0 3px 8px rgba(0,0,0,.12); }
+.av-score.bump { animation: av-bump .4s; }
+.av-title { margin: 0; text-align: center; font-weight: 900; font-size: clamp(18px, 4.2vw, 28px); line-height: 1.2; }
+.av-stage { flex: 1; min-height: 0; width: 100%; max-width: 900px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: clamp(8px, 2.5vh, 22px); }
+
+.av-prompt { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; text-align: center; }
+.av-big { font-size: clamp(64px, 18vmin, 130px); line-height: 1.05; }
+.av-word { font-weight: 900; font-size: clamp(22px, 6vmin, 44px); }
+.av-sub { font-weight: 800; font-size: clamp(14px, 3.4vmin, 20px); opacity: .8; }
+
+.av-choices { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(10px, 2.4vmin, 18px); }
+.av-choice { border: none; border-radius: 22px; background: #fff; color: #333; font-family: inherit; font-weight: 900;
+  cursor: pointer; box-shadow: 0 7px 0 rgba(0,0,0,.18); transition: transform .08s, background .2s;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-width: clamp(84px, 24vmin, 150px); min-height: clamp(84px, 24vmin, 150px); padding: 10px 14px; }
+.av-choice:active { transform: translateY(4px); box-shadow: 0 3px 0 rgba(0,0,0,.18); }
+.av-choice .e { font-size: clamp(42px, 12vmin, 80px); line-height: 1.05; }
+.av-choice .w { font-size: clamp(14px, 3.6vmin, 22px); }
+.av-choice.wrong { animation: av-shake .35s; }
+.av-choice.right { background: #b6f09c; }
+.av-choice.hint { animation: av-pulse .8s ease-in-out infinite; box-shadow: 0 0 0 6px #ffd93b, 0 7px 0 rgba(0,0,0,.18); }
+html[data-theme="dark"] .av-choice { background: #f3f3fa; }
+html[data-theme="dark"] .av-choice.right { background: #9be07c; }
+
+.av-btn { border: none; border-radius: 999px; background: #fff; color: #333; font-family: inherit; font-weight: 900;
+  font-size: clamp(16px, 4vmin, 22px); padding: 12px 26px; cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,.18); }
+.av-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0,0,0,.18); }
+.av-btn.on { background: #333; color: #fff; }
+.av-modes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.av-modes .av-btn { font-size: 15px; padding: 7px 16px; box-shadow: 0 4px 0 rgba(0,0,0,.18); }
+
+.av-confetti { position: fixed; top: 0; font-size: 26px; pointer-events: none; z-index: 500; animation: av-fall 1.6s ease-in forwards; }
+@keyframes av-fall { from { transform: translateY(-30px); opacity: 1; } to { transform: translateY(105vh) rotate(360deg); opacity: .8; } }
+@keyframes av-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-9px); } 75% { transform: translateX(9px); } }
+@keyframes av-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes av-bump { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.3); } }
+@keyframes av-pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+.av-pop { animation: av-pop .35s ease-out; }
+.av-choice.nav { min-width: clamp(70px, 18vmin, 96px); min-height: clamp(70px, 18vmin, 96px); border-radius: 50%; font-size: clamp(28px, 7vmin, 40px); }
+.av-btn:disabled { opacity: .4; cursor: default; }
+.av-btn.hint { box-shadow: 0 0 0 5px #ffd93b, 0 6px 0 rgba(0,0,0,.18); }
+.av-lvl { border: none; border-radius: 50%; width: 38px; height: 38px; margin: 0 10px; background: rgba(255,255,255,.85); color: #333;
+  font-family: inherit; font-size: 15px; font-weight: 900; cursor: pointer; vertical-align: middle; box-shadow: 0 3px 0 rgba(0,0,0,.18); }
+.av-lvl:disabled { opacity: .3; cursor: default; }
+.av-lvl-name { vertical-align: middle; }
+
+/* Puzzle layout: instruction line, a board area that takes all spare room
+   (the game sizes its board from it), then a row of buttons. */
+.av-stage.av-puzzle { max-width: 1200px; }
+.av-hint { cursor: pointer; text-align: center; max-width: 34em; }
+.av-fit { flex: 1; min-height: 0; align-self: stretch; display: flex; align-items: center; justify-content: center; }
+.av-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.av-bar .av-btn { font-size: clamp(14px, 3.4vmin, 19px); padding: 10px 18px; }
+/* Short and wide (a phone on its side): board on the left, buttons stacked on the right. */
+@media (max-height: 500px) and (orientation: landscape) {
+  body.av:has(.av-puzzle) { padding-top: 58px; }
+  body.av:has(.av-puzzle) .av-title { position: fixed; top: 16px; left: 76px; font-size: 17px; z-index: 5; }
+  body.av:has(.av-puzzle) .av-score { left: auto; right: 76px; transform: none; top: 16px; animation: none; }
+  .av-puzzle { flex-direction: row; gap: 12px; }
+  .av-puzzle .av-hint { display: none; }
+  .av-puzzle .av-bar { flex-direction: column; flex-wrap: nowrap; gap: 8px; }
+  .av-puzzle .av-bar .av-btn { font-size: 14px; padding: 8px 14px; }
+}

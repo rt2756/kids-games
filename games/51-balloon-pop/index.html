@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Balloon Pop</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #a1c4fd 0%, #c2e9fb 100%);
+    height:100vh; width:100vw; overflow:hidden; position:relative; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #16243a 0%, #11303a 100%); }
+  h1 { position:absolute; top:88px; left:0; right:0; text-align:center; color:#fff; font-weight:900;
+    font-size:clamp(18px,4.6vw,30px); margin:0; pointer-events:none; text-shadow:2px 2px 0 rgba(0,0,0,.15); }
+  .balloon { position:absolute; width:clamp(70px,18vw,110px); height:clamp(88px,22vw,138px); border-radius:50% 50% 48% 48%;
+    cursor:pointer; box-shadow:inset -10px -12px 18px rgba(0,0,0,.18); }
+  .balloon::after { content:''; position:absolute; bottom:-10px; left:50%; width:2px; height:18px; background:rgba(0,0,0,.3); transform:translateX(-50%); }
+  .balloon.pop { animation:pp .25s forwards; }
+  @keyframes pp { to{ transform:scale(1.5); opacity:0; } }
+</style>
+</head>
+<body>
+  <h1>Pop the balloons! 🎈</h1>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const COLORS=[['Red','#ff5757'],['Blue','#3a86ff'],['Yellow','#ffd23f'],['Green','#2ec4b6'],['Purple','#9b5de5'],['Orange','#ff8c42'],['Pink','#ff6ec7']];
+    let balloons=[], lastSpawn=0, raf=null, lastT=0;
+
+    function spawn(){
+      const [name,css]=KidsUtil.rand(COLORS);
+      const el=document.createElement('div'); el.className='balloon'; el.style.background=css;
+      document.body.appendChild(el);
+      const maxX=Math.max(10, window.innerWidth - el.offsetWidth - 10);
+      const b={ el, name, x:10+Math.random()*maxX, y:window.innerHeight+20, speed:34+Math.random()*30, sway:Math.random()*Math.PI*2 };
+      el.style.left=b.x+'px';
+      el.addEventListener('pointerdown', ()=>popB(b));
+      balloons.push(b);
+    }
+    function popB(b){
+      try{KidsAudio.getAudio();}catch(e){}
+      if(b.popped) return; b.popped=true;
+      b.el.classList.add('pop'); KidsAudio.playPop(); KidsAudio.speak(b.name, { pitch:1.35 });
+      setTimeout(()=>b.el.remove(),250);
+      balloons=balloons.filter(x=>x!==b);
+    }
+    function loop(t){
+      if(!lastT) lastT=t; const dt=(t-lastT)/1000; lastT=t;
+      if(t-lastSpawn>1100){ spawn(); lastSpawn=t; }
+      for(let i=balloons.length-1;i>=0;i--){ const b=balloons[i]; if(b.popped) continue;
+        b.y-=b.speed*dt; b.sway+=dt*2; const dx=Math.sin(b.sway)*0.6;
+        b.el.style.top=b.y+'px'; b.el.style.left=(b.x+Math.sin(b.sway)*14)+'px';
+        if(b.y<-160){ b.el.remove(); balloons.splice(i,1); } }
+      raf=requestAnimationFrame(loop);
+    }
+    raf=requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

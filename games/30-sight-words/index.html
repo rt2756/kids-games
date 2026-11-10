@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Sight Word Pop</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #43c6ac 0%, #191654 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center;
+  }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #10342f 0%, #0a0828 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(20px,4.6vw,32px); margin:0; padding:84px 16px 2px; text-align:center; }
+  #target { color:#fff; font-weight:900; font-size:clamp(30px,9vw,64px); margin:2px 0 6px;
+    text-shadow:2px 2px 0 rgba(0,0,0,.25); }
+  #replay { border:none; background:rgba(255,255,255,.9); color:#191654; font-weight:800;
+    font-size:15px; padding:7px 16px; border-radius:999px; cursor:pointer; margin-bottom:6px; }
+  #field { flex:1; width:100%; position:relative; }
+  .bub {
+    position:absolute; min-width:clamp(78px,20vw,120px); height:clamp(60px,15vw,86px); padding:0 14px;
+    border-radius:999px; background:#fff; color:#222; font-weight:900; font-size:clamp(20px,5.5vw,34px);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    box-shadow:0 6px 14px rgba(0,0,0,.25); user-select:none; transition:transform .1s;
+  }
+  .bub:active { transform:scale(.92); }
+  .bub.pop { animation:pop .35s ease forwards; }
+  @keyframes pop { to { transform:scale(1.6); opacity:0; } }
+  .bub.wrong { animation:shake .4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Pop the word you hear!</h1>
+  <div id="target">···</div>
+  <button id="replay">🔊 Say it again</button>
+  <div id="field"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const WORDS = ['the','and','is','you','to','see','we','go','my','me','he','she','it','in','on','up','at','can','like','a'];
+    const field = document.getElementById('field');
+    const targetEl = document.getElementById('target');
+    const scoreEl = document.getElementById('score');
+    let target, score = 0, locked = false;
+
+    function say() { KidsAudio.speak('Find the word: ' + target, { rate:0.9 }); }
+
+    function newRound() {
+      locked = false;
+      field.innerHTML = '';
+      const pool = KidsUtil.shuffle(WORDS).slice(0, 5);
+      target = KidsUtil.rand(pool);
+      targetEl.textContent = target;
+      const w = field.clientWidth, h = field.clientHeight;
+      pool.forEach((word, i) => {
+        const b = document.createElement('div');
+        b.className = 'bub'; b.textContent = word;
+        b.style.left = (8 + Math.random()*70) + '%';
+        b.style.top = (6 + (i/pool.length)*80 + Math.random()*8) + '%';
+        b.onclick = () => pick(word, b);
+        field.appendChild(b);
+      });
+      setTimeout(say, 350);
+    }
+
+    function pick(word, b) {
+      if (locked) return;
+      try { KidsAudio.getAudio(); } catch(e) {}
+      if (word === target) {
+        locked = true;
+        b.classList.add('pop');
+        KidsAudio.playPop();
+        score++; scoreEl.textContent = '⭐ ' + score;
+        KidsAudio.speak('Yes! ' + word + '!');
+        setTimeout(newRound, 1200);
+      } else {
+        b.classList.add('wrong');
+        KidsAudio.playChime('uhoh');
+        setTimeout(() => b.classList.remove('wrong'), 450);
+      }
+    }
+
+    document.getElementById('replay').onclick = () => { try { KidsAudio.getAudio(); } catch(e){} say(); };
+    newRound();
+  </script>
+</body>
+</html>

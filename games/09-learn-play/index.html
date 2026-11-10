@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Learn &amp; Play!</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: #141432;
+    font-family: Arial, system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  #game {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+</style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script src="../../shared/common.js"></script>
+  <script>
+  (() => {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    let WIDTH = 0, HEIGHT = 0, DPR = 1;
+
+    function resize() {
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      WIDTH = window.innerWidth;
+      HEIGHT = window.innerHeight;
+      canvas.width = Math.floor(WIDTH * DPR);
+      canvas.height = Math.floor(HEIGHT * DPR);
+      canvas.style.width = WIDTH + 'px';
+      canvas.style.height = HEIGHT + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- Constants ported from pygame version ---
+    const WHITE = '#ffffff';
+    const BLACK = '#000000';
+    const BG_COLOR = '#141432';
+
+    const BUBBLE_COLORS = [
+      'rgb(255,90,120)', 'rgb(80,200,255)', 'rgb(255,200,50)',
+      'rgb(120,230,120)', 'rgb(200,130,255)', 'rgb(255,150,80)',
+      'rgb(100,220,200)', 'rgb(255,130,180)',
+    ];
+    const CELEBRATION_COLORS = [
+      'rgb(255,215,0)', 'rgb(255,100,100)', 'rgb(100,255,100)',
+      'rgb(100,200,255)', 'rgb(255,150,255)', 'rgb(255,180,50)',
+    ];
+
+    const COLORS = ['Red', 'Blue', 'Yellow', 'Green', 'White', 'Black'];
+    const COLOR_WORDS = { Red: 'Apple', Blue: 'Sky', Yellow: 'Sun', Green: 'Grass', White: 'Snow', Black: 'Night' };
+    const COLOR_RGB = {
+      Red: 'rgb(255,60,60)', Blue: 'rgb(60,120,255)', Yellow: 'rgb(255,230,50)',
+      Green: 'rgb(60,200,80)', White: 'rgb(240,240,240)', Black: 'rgb(30,30,30)',
+    };
+
+    const LETTERS = ['A', 'B', 'C', 'D', 'E'];
+    const NUMBER_LEVELS = [
+      ['1', '2', '3', '4', '5'],
+      ['6', '7', '8', '9', '10'],
+      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+    ];
+
+    const LETTER_WORDS = { A: 'Apple', B: 'Ball', C: 'Cat', D: 'Dog', E: 'Elephant' };
+    const NUMBER_WORDS = {
+      '1': 'One', '2': 'Two', '3': 'Three', '4': 'Four', '5': 'Five',
+      '6': 'Six', '7': 'Seven', '8': 'Eight', '9': 'Nine', '10': 'Ten',
+    };
+    const SHAPES = ['Circle', 'Square', 'Triangle', 'Star', 'Heart'];
+    const ANIMALS = ['Cat', 'Dog', 'Cow', 'Duck', 'Elephant'];
+    const FRUITS = ['Apple', 'Banana', 'Mango', 'Orange', 'Grape'];
+    const VEHICLES = ['Car', 'Bus', 'Train', 'Plane', 'Boat'];
+
+    const MODE_NOUNS = {
+      abc: 'letter', '123': 'number', colors: 'color',
+      shapes: 'shape', animals: 'animal', fruits: 'fruit', vehicles: 'vehicle',
+    };
+    const MODE_SEQUENCES = {
+      abc: LETTERS, colors: COLORS, shapes: SHAPES,
+      animals: ANIMALS, fruits: FRUITS, vehicles: VEHICLES,
+    };
+    const MENU_BUTTONS = [
+      { mode: 'abc',      label: 'A B C',    base: 'rgb(80,180,230)',  hover: 'rgb(100,220,255)' },
+      { mode: '123',      label: '1 2 3',    base: 'rgb(230,150,60)',  hover: 'rgb(255,180,80)' },
+      { mode: 'colors',   label: 'Colors',   base: 'rgb(170,80,190)',  hover: 'rgb(200,100,220)' },
+      { mode: 'shapes',   label: 'Shapes',   base: 'rgb(70,180,130)',  hover: 'rgb(100,220,160)' },
+      { mode: 'animals',  label: 'Animals',  base: 'rgb(230,120,100)', hover: 'rgb(255,150,130)' },
+      { mode: 'fruits',   label: 'Fruits',   base: 'rgb(235,90,90)',   hover: 'rgb(255,125,120)' },
+      { mode: 'vehicles', label: 'Vehicles', base: 'rgb(80,130,235)',  hover: 'rgb(115,165,255)' },
+    ];
+
+    // --- Image loading ---
+    const IMAGES = {};
+    const IMAGE_FILES = [
+      'apple', 'ball', 'banana', 'boat', 'bus', 'car', 'cat', 'circle', 'cow',
+      'dog', 'duck', 'elephant', 'grape', 'heart', 'mango', 'orange', 'plane',
+      'square', 'star', 'train', 'triangle',
+    ];
+    for (const name of IMAGE_FILES) {
+      const img = new Image();
+      img.src = `images/${name}.png`;
+      IMAGES[name] = img;
+    }
+    function imgFor(label) {
+      // label is e.g. "Apple", "Cat", "1" — images are keyed by lowercase word
+      if (!label) return null;
+      const key = label.toLowerCase();
+      const im = IMAGES[key];
+      if (im && im.complete && im.naturalWidth > 0) return im;
+      return null;
+    }
+
+    // --- Audio: BAM (wrong) + yay chime (right) + speak narration ---
+    function playBam() {
+      try {
+        const ctxA = KidsAudio.getAudio();
+        const now = ctxA.currentTime;
+        // Low thump
+        const osc1 = ctxA.createOscillator();
+        const g1 = ctxA.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(120, now);
+        osc1.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+        g1.gain.setValueAtTime(0.0001, now);
+        g1.gain.exponentialRampToValueAtTime(0.6, now + 0.01);
+        g1.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+        osc1.connect(g1).connect(ctxA.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.4);
+
+        // Noise burst for the punch
+        const bufSize = Math.floor(ctxA.sampleRate * 0.08);
+        const buf = ctxA.createBuffer(1, bufSize, ctxA.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+        const noise = ctxA.createBufferSource();
+        noise.buffer = buf;
+        const ng = ctxA.createGain();
+        ng.gain.value = 0.45;
+        noise.connect(ng).connect(ctxA.destination);
+        noise.start(now);
+      } catch (e) {}
+    }
+
+    // Speak via the shared helper — matches the pattern used by other working games.
+    // Preload voices on the voiceschanged event so the first call has a good voice ready.
+    if ('speechSynthesis' in window) {
+      try { speechSynthesis.getVoices(); } catch (e) {}
+      speechSynthesis.addEventListener('voiceschanged', () => {
+        try { speechSynthesis.getVoices(); } catch (e) {}
+      });
+    }
+    function announce(text) {
+      if (window.KidsAudio && KidsAudio.speak) KidsAudio.speak(text);
+    }
+    function getAnnounceName(label, mode) {
+      if (mode === 'abc') {
+        const word = LETTER_WORDS[label];
+        return word ? `${label}, for ${word}` : label;
+      }
+      if (mode === '123') return NUMBER_WORDS[label] || label;
+      return label;
+    }
+    function announceQuestion(target, mode) {
+      const noun = MODE_NOUNS[mode] || 'thing';
+      announce(`Find the ${noun}, ${getAnnounceName(target, mode)}.`);
+    }
+
+    // --- Utilities ---
+    function getModeSequence(mode, numberLevel) {
+      if (mode === '123') return NUMBER_LEVELS[numberLevel].slice();
+      return MODE_SEQUENCES[mode].slice();
+    }
+    function getPromptText(mode, target) {
+      return `Find the ${MODE_NOUNS[mode] || 'thing'}  ${target} !`;
+    }
+    function getShowcaseLabel(mode, target) {
+      if (mode === 'colors') return `${target}  =  ${COLOR_WORDS[target] || ''}`;
+      if (mode === 'abc')    return `${target}  for  ${LETTER_WORDS[target] || ''}`;
+      if (mode === '123') {
+        const word = NUMBER_WORDS[target] || target;
+        const cat = parseInt(target, 10) === 1 ? 'Cat' : 'Cats';
+        return `${target}  =  ${word}  ${cat}`;
+      }
+      return target;
+    }
+    function hsvToRgb(h, s, v) {
+      // h in [0, 360), s/v in [0,1]
+      const c = v * s;
+      const hh = h / 60;
+      const x = c * (1 - Math.abs((hh % 2) - 1));
+      let r = 0, g = 0, b = 0;
+      if (hh < 1) { r = c; g = x; b = 0; }
+      else if (hh < 2) { r = x; g = c; b = 0; }
+      else if (hh < 3) { r = 0; g = c; b = x; }
+      else if (hh < 4) { r = 0; g = x; b = c; }
+      else if (hh < 5) { r = x; g = 0; b = c; }
+      else { r = c; g = 0; b = x; }
+      const m = v - c;
+      return `rgb(${Math.round((r + m) * 255)},${Math.round((g + m) * 255)},${Math.round((b + m) * 255)})`;
+    }
+    function rand(n) { return Math.random() * n; }
+    function randi(lo, hi) { return Math.floor(lo + Math.random() * (hi - lo + 1)); }
+    function choice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function shuffle(a) {
+      const r = a.slice();
+      for (let i = r.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [r[i], r[j]] = [r[j], r[i]];
+      }
+      return r;
+    }
+
+    // Text size fitting: pick the largest from a list that fits max width
+    function pickFontSize(text, sizes, maxWidth, bold = true) {
+      for (const s of sizes) {
+        ctx.font = `${bold ? 'bold ' : ''}${s}px Arial`;
+        if (ctx.measureText(text).width <= maxWidth) return s;
+      }
+      return sizes[sizes.length - 1];
+    }
+
+    // Draw text with a black drop shadow
+    function drawTextShadow(text, x, y, font, color) {
+      ctx.font = font;
+      ctx.fillStyle = BLACK;
+      ctx.fillText(text, x + 2, y + 2);
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+    }
+
+    // Draw centered rainbow text. y is top-of-glyph.
+    function drawRainbowCenteredText(text, y, tick, sizes) {
+      const sizeList = sizes || [64, 48, 36, 28];
+      const size = pickFontSize(text, sizeList, WIDTH - 80);
+      ctx.font = `bold ${size}px Arial`;
+      ctx.textBaseline = 'top';
+      const totalW = ctx.measureText(text).width;
+      let x = WIDTH / 2 - totalW / 2;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const hue = (tick * 3 + i * 25) % 360;
+        const col = hsvToRgb(hue, 0.8, 1.0);
+        ctx.fillStyle = BLACK;
+        ctx.fillText(ch, x + 2, y + 2);
+        ctx.fillStyle = col;
+        ctx.fillText(ch, x, y);
+        x += ctx.measureText(ch).width;
+      }
+    }
+
+    // --- Background stars ---
+    class BGStar {
+      constructor() {
+        this.x = rand(WIDTH);
+        this.y = rand(HEIGHT);
+        this.size = randi(1, 3);
+        this.speed = 0.2 + rand(0.6);
+        this.twinkle = rand(Math.PI * 2);
+      }
+      update() {
+        this.y += this.speed;
+        if (this.y > HEIGHT) { this.y = 0; this.x = rand(WIDTH); }
+      }
+      draw(tick) {
+        const b = 0.4 + 0.6 * Math.sin(tick * 0.03 + this.twinkle);
+        ctx.globalAlpha = b;
+        ctx.fillStyle = 'rgb(255,255,220)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // --- Confetti ---
+    class Confetti {
+      constructor(x, y) {
+        this.x = x; this.y = y;
+        this.color = choice(CELEBRATION_COLORS);
+        const angle = rand(Math.PI * 2);
+        const speed = 4 + rand(8);
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed - 5;
+        this.life = randi(40, 80);
+        this.maxLife = this.life;
+        this.size = randi(4, 10);
+        this.rot = rand(360);
+        this.rotSpeed = -8 + rand(16);
+      }
+      update() {
+        this.x += this.vx; this.y += this.vy;
+        this.vy += 0.2; this.vx *= 0.99;
+        this.rot += this.rotSpeed;
+        this.life--;
+      }
+      draw() {
+        const alpha = Math.max(0, this.life / this.maxLife);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rot * Math.PI / 180);
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.size, -this.size / 2, this.size * 2, this.size);
+        ctx.restore();
+      }
+    }
+
+    // --- Celebration stars ---
+    class CelebStar {
+      constructor(x, y) {
+        this.x = x; this.y = y;
+        this.vy = -3 + rand(2);
+        this.vx = -2 + rand(4);
+        this.size = randi(15, 30);
+        this.color = choice(CELEBRATION_COLORS);
+        this.rot = rand(360);
+        this.rotSpeed = -5 + rand(10);
+        this.life = randi(50, 90);
+        this.maxLife = this.life;
+      }
+      update() {
+        this.x += this.vx; this.y += this.vy;
+        this.vy += 0.05;
+        this.rot += this.rotSpeed;
+        this.life--;
+      }
+      draw() {
+        if (this.life <= 0) return;
+        const alpha = Math.max(0, this.life / this.maxLife);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const a = (this.rot + i * 72 - 90) * Math.PI / 180;
+          const px = this.x + Math.cos(a) * this.size;
+          const py = this.y + Math.sin(a) * this.size;
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          const a2 = (this.rot + i * 72 + 36 - 90) * Math.PI / 180;
+          ctx.lineTo(this.x + Math.cos(a2) * this.size * 0.4, this.y + Math.sin(a2) * this.size * 0.4);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // --- Bubble ---
+    const ICON_MODES = new Set(['shapes', 'animals', 'fruits', 'vehicles']);
+
+    class Bubble {
+      constructor(x, y, label, color, radius, mode) {
+        this.x = x; this.y = y;
+        this.label = label;
+        this.color = color;
+        this.radius = radius;
+        this.baseY = y;
+        this.phase = rand(Math.PI * 2);
+        this.wobble = 0;
+        this.wobbleDecay = 0;
+        this.scale = 0;
+        this.targetScale = 1;
+        this.mode = mode;
+        this.hasIcon = ICON_MODES.has(mode);
+      }
+      update(tick) {
+        this.y = this.baseY + Math.sin(tick * 0.03 + this.phase) * 10;
+        if (this.wobbleDecay > 0) {
+          this.wobble = Math.sin(this.wobbleDecay * 0.8) * this.wobbleDecay * 0.5;
+          this.wobbleDecay--;
+        } else {
+          this.wobble = 0;
+        }
+        this.scale += (this.targetScale - this.scale) * 0.12;
+      }
+      draw() {
+        const r = this.radius * this.scale;
+        if (r < 2) return;
+        const cx = this.x + this.wobble;
+        const cy = this.y;
+
+        if (this.hasIcon) {
+          const img = imgFor(this.label);
+          if (img) {
+            const size = r * 2;
+            ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
+          } else {
+            // fallback: plain circle with label
+            this.drawCircleWithLabel(cx, cy, r);
+          }
+        } else {
+          this.drawCircleWithLabel(cx, cy, r);
+        }
+      }
+      drawCircleWithLabel(cx, cy, r) {
+        // shadow
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(cx + 4, cy + 4, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // body — use the color, possibly a colour swatch for Colors mode
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Label
+        const maxW = Math.max(90, r * 1.55);
+        const size = pickFontSize(this.label, [80, 56, 36, 28], maxW);
+        ctx.font = `bold ${size}px Arial`;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = BLACK;
+        ctx.fillText(this.label, cx + 2, cy + 2);
+        ctx.fillStyle = WHITE;
+        ctx.fillText(this.label, cx, cy);
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+      }
+      contains(mx, my) {
+        const dx = mx - this.x;
+        const dy = my - this.y;
+        return dx * dx + dy * dy <= this.radius * this.radius;
+      }
+    }
+
+    function generateBubbles(target, pool, mode, count) {
+      const radius = Math.min(WIDTH, HEIGHT) / 10;
+      const others = shuffle(pool.filter(x => x !== target)).slice(0, count - 1);
+      const choices = shuffle([target, ...others]);
+
+      const margin = radius + 20;
+      const usableW = WIDTH - margin * 2;
+      const usableH = HEIGHT - 300 - margin * 2;
+      const topOffset = 220;
+
+      const bubbles = [];
+      const positions = [];
+      for (let idx = 0; idx < choices.length; idx++) {
+        let placed = false;
+        for (let tryI = 0; tryI < 100; tryI++) {
+          const bx = margin + rand(usableW);
+          const by = topOffset + margin + rand(usableH);
+          let ok = true;
+          for (const [px, py] of positions) {
+            if (Math.hypot(bx - px, by - py) < radius * 2.5) { ok = false; break; }
+          }
+          if (ok) { positions.push([bx, by]); placed = true; break; }
+        }
+        if (!placed) {
+          // grid fallback
+          const cols = 3;
+          const gx = margin + (idx % cols) * (usableW / cols) + usableW / (cols * 2);
+          const gy = topOffset + margin + Math.floor(idx / cols) * (radius * 3) + radius;
+          positions.push([gx, gy]);
+        }
+        const color = mode === 'colors'
+          ? (COLOR_RGB[choices[idx]] || BUBBLE_COLORS[idx % BUBBLE_COLORS.length])
+          : BUBBLE_COLORS[idx % BUBBLE_COLORS.length];
+        const [bx, by] = positions[positions.length - 1];
+        bubbles.push(new Bubble(bx, by, choices[idx], color, radius, mode));
+      }
+      return bubbles;
+    }
+
+    // --- Prompt text (rainbow bounce) ---
+    function drawPrompt(text, tick) {
+      const bounce = Math.sin(tick * 0.05) * 5;
+      const size = pickFontSize(text, [64, 56, 44, 32], WIDTH - 90);
+      ctx.font = `bold ${size}px Arial`;
+      ctx.textBaseline = 'top';
+      const totalW = ctx.measureText(text).width;
+      let x = WIDTH / 2 - totalW / 2;
+      const y = 60 + bounce;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const hue = (tick * 2 + i * 30) % 360;
+        const col = hsvToRgb(hue, 0.7, 1.0);
+        ctx.fillStyle = BLACK;
+        ctx.fillText(ch, x + 3, y + 3);
+        ctx.fillStyle = col;
+        ctx.fillText(ch, x, y);
+        x += ctx.measureText(ch).width;
+      }
+    }
+
+    // --- Big celebration target ---
+    function drawBigTarget(text, tick) {
+      const size = pickFontSize(text, [120, 96, 72, 56], WIDTH - 140);
+      const scale = 1.0 + 0.1 * Math.sin(tick * 0.15);
+      const color = CELEBRATION_COLORS[Math.floor(tick / 5) % CELEBRATION_COLORS.length];
+      ctx.save();
+      ctx.translate(WIDTH / 2, HEIGHT / 2);
+      ctx.scale(scale, scale);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${size}px Arial`;
+      ctx.fillStyle = BLACK;
+      ctx.fillText(text, 4, 4);
+      ctx.fillStyle = color;
+      ctx.fillText(text, 0, 0);
+      ctx.restore();
+      ctx.textAlign = 'start';
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    // --- Menu ---
+    function getMenuButtons() {
+      const colGap = 28;
+      const rowGap = 24;
+      // Row of 3 buttons + 2 gaps must fit in WIDTH (with side margins).
+      const sideMargin = 20;
+      const maxRowW = WIDTH - sideMargin * 2;
+      const maxBtnW = (maxRowW - colGap * 2) / 3;
+      const buttonW = Math.max(120, Math.min(320, maxBtnW));
+      const buttonH = Math.max(70, Math.min(100, buttonW * 0.42));
+      const rows = [MENU_BUTTONS.slice(0, 3), MENU_BUTTONS.slice(3, 6), MENU_BUTTONS.slice(6)];
+      const totalH = rows.length * buttonH + (rows.length - 1) * rowGap;
+      const startY = HEIGHT / 2 - totalH / 2 + 40;
+      const out = [];
+      let y = startY;
+      for (const row of rows) {
+        const rowW = row.length * buttonW + Math.max(0, row.length - 1) * colGap;
+        let x = WIDTH / 2 - rowW / 2;
+        for (const def of row) {
+          out.push({ ...def, rect: { x, y, w: buttonW, h: buttonH } });
+          x += buttonW + colGap;
+        }
+        y += buttonH + rowGap;
+      }
+      return out;
+    }
+
+    function drawMenu(tick, stars, buttons, hoverMode) {
+      ctx.fillStyle = BG_COLOR;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      for (const s of stars) s.draw(tick);
+
+      drawPrompt("Let's Learn!", tick);
+
+      for (const b of buttons) {
+        const color = b.mode === hoverMode ? b.hover : b.base;
+        const r = b.rect;
+        roundRect(r.x, r.y, r.w, r.h, 28);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = WHITE;
+        ctx.stroke();
+        const size = pickFontSize(b.label, [72, 56, 44, 32], r.w - 20);
+        ctx.font = `bold ${size}px Arial`;
+        ctx.fillStyle = WHITE;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.label, r.x + r.w / 2, r.y + r.h / 2);
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+      }
+
+      ctx.font = '28px Arial';
+      ctx.fillStyle = 'rgb(120,120,140)';
+      ctx.textAlign = 'center';
+      ctx.fillText('Press ESC to go back', WIDTH / 2, HEIGHT - 30);
+      ctx.textAlign = 'start';
+    }
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y,     x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x,     y + h, r);
+      ctx.arcTo(x,     y + h, x,     y,     r);
+      ctx.arcTo(x,     y,     x + w, y,     r);
+      ctx.closePath();
+    }
+
+    // --- Game state ---
+    const STATE_MENU = 0;
+    const STATE_PLAYING = 1;
+    const STATE_CELEBRATE = 2;
+    const STATE_SHOW_IMAGE = 3;
+
+    const state = {
+      tick: 0,
+      gameState: STATE_MENU,
+      mode: null,
+      numberLevel: 0,
+      sequence: [],
+      seqIndex: 0,
+      target: null,
+      bubbles: [],
+      confetti: [],
+      celebStars: [],
+      celebrateTimer: 0,
+      showImageTimer: 0,
+      imageScale: 0,
+      streak: 0,
+      wrongFlash: 0,
+      stars: [],
+      menuButtons: [],
+      mouse: { x: 0, y: 0 },
+    };
+
+    function initStars() {
+      state.stars = [];
+      for (let i = 0; i < 60; i++) state.stars.push(new BGStar());
+    }
+    initStars();
+
+    function startMode(m) {
+      state.mode = m;
+      if (m === '123') state.numberLevel = 0;
+      state.sequence = getModeSequence(m, state.numberLevel);
+      state.seqIndex = 0;
+      state.streak = 0;
+      state.target = state.sequence[0];
+      state.bubbles = generateBubbles(state.target, state.sequence, m, Math.min(5, state.sequence.length));
+      state.gameState = STATE_PLAYING;
+      announceQuestion(state.target, m);
+    }
+
+    function nextRound() {
+      state.seqIndex++;
+      if (state.seqIndex >= state.sequence.length) {
+        if (state.mode === '123') {
+          state.numberLevel = (state.numberLevel + 1) % NUMBER_LEVELS.length;
+          state.sequence = getModeSequence(state.mode, state.numberLevel);
+        }
+        state.seqIndex = 0;
+      }
+      state.target = state.sequence[state.seqIndex];
+      state.bubbles = generateBubbles(state.target, state.sequence, state.mode, Math.min(5, state.sequence.length));
+      state.gameState = STATE_PLAYING;
+      announceQuestion(state.target, state.mode);
+    }
+
+    function returnToMenu() {
+      state.gameState = STATE_MENU;
+      state.confetti = [];
+      state.celebStars = [];
+    }
+
+    // --- Input ---
+    function pointerPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.clientX != null ? e.clientX : (e.touches && e.touches[0] && e.touches[0].clientX);
+      const cy = e.clientY != null ? e.clientY : (e.touches && e.touches[0] && e.touches[0].clientY);
+      return { x: cx - rect.left, y: cy - rect.top };
+    }
+
+    function handleDown(e) {
+      e.preventDefault();
+      // Make sure audio context is running (kick start on first tap)
+      try { KidsAudio.getAudio(); } catch (_) {}
+      const { x: mx, y: my } = pointerPos(e);
+
+      if (state.gameState === STATE_MENU) {
+        for (const b of state.menuButtons) {
+          const r = b.rect;
+          if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+            startMode(b.mode);
+            return;
+          }
+        }
+      } else if (state.gameState === STATE_PLAYING) {
+        for (const b of state.bubbles) {
+          if (b.contains(mx, my)) {
+            if (b.label === state.target) {
+              state.streak++;
+              state.gameState = STATE_CELEBRATE;
+              state.celebrateTimer = state.tick;
+              for (let i = 0; i < 50; i++) state.confetti.push(new Confetti(b.x, b.y));
+              for (let i = 0; i < 8; i++) state.celebStars.push(new CelebStar(b.x, b.y));
+              KidsAudio.playChime('yay');
+              announce(`Correct, ${getAnnounceName(b.label, state.mode)}.`);
+            } else {
+              b.wobbleDecay = 30;
+              state.wrongFlash = 20;
+              playBam();
+              announce(`Wrong, ${getAnnounceName(b.label, state.mode)}.`);
+            }
+            break;
+          }
+        }
+      } else if (state.gameState === STATE_SHOW_IMAGE) {
+        if (state.imageScale >= 1.0) nextRound();
+      }
+    }
+
+    function handleMove(e) {
+      const { x, y } = pointerPos(e);
+      state.mouse.x = x;
+      state.mouse.y = y;
+    }
+
+    canvas.addEventListener('mousedown', handleDown);
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('touchstart', handleDown, { passive: false });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e); }, { passive: false });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (state.gameState !== STATE_MENU) returnToMenu();
+      }
+    });
+
+    // --- Main loop ---
+    function frame() {
+      state.tick++;
+      const tick = state.tick;
+
+      if (state.gameState === STATE_MENU) {
+        state.menuButtons = getMenuButtons();
+      }
+
+      // Hover
+      let hoverMode = null;
+      if (state.gameState === STATE_MENU) {
+        for (const b of state.menuButtons) {
+          const r = b.rect;
+          if (state.mouse.x >= r.x && state.mouse.x <= r.x + r.w &&
+              state.mouse.y >= r.y && state.mouse.y <= r.y + r.h) {
+            hoverMode = b.mode; break;
+          }
+        }
+      }
+
+      // Update
+      for (const s of state.stars) s.update();
+
+      if (state.gameState === STATE_PLAYING) {
+        for (const b of state.bubbles) b.update(tick);
+        if (state.wrongFlash > 0) state.wrongFlash--;
+      }
+
+      if (state.gameState === STATE_CELEBRATE) {
+        for (let i = state.confetti.length - 1; i >= 0; i--) {
+          state.confetti[i].update();
+          if (state.confetti[i].life <= 0) state.confetti.splice(i, 1);
+        }
+        for (let i = state.celebStars.length - 1; i >= 0; i--) {
+          state.celebStars[i].update();
+          if (state.celebStars[i].life <= 0) state.celebStars.splice(i, 1);
+        }
+        if (tick - state.celebrateTimer > 90) {
+          // All modes have a showcase (either image, drawn colour, or counted cats)
+          state.gameState = STATE_SHOW_IMAGE;
+          state.showImageTimer = tick;
+          state.imageScale = 0;
+        }
+      }
+
+      if (state.gameState === STATE_SHOW_IMAGE) {
+        state.imageScale = Math.min(1.0, state.imageScale + 0.04);
+      }
+
+      // --- Draw ---
+      ctx.fillStyle = BG_COLOR;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      if (state.gameState === STATE_MENU) {
+        drawMenu(tick, state.stars, state.menuButtons, hoverMode);
+      } else {
+        for (const s of state.stars) s.draw(tick);
+      }
+
+      if (state.gameState === STATE_PLAYING) {
+        drawPrompt(getPromptText(state.mode, state.target), tick);
+
+        // Progress bar
+        const progress = state.seqIndex / state.sequence.length;
+        const barW = WIDTH - 100;
+        const barH = 16;
+        const barX = 50;
+        const barY = 160;
+        ctx.fillStyle = 'rgb(40,40,70)';
+        roundRect(barX, barY, barW, barH, 8); ctx.fill();
+        ctx.fillStyle = 'rgb(100,220,255)';
+        roundRect(barX, barY, barW * progress, barH, 8); ctx.fill();
+        ctx.font = '28px Arial';
+        ctx.fillStyle = 'rgb(180,180,200)';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${state.seqIndex}/${state.sequence.length}`, barX + barW + 10, barY - 5);
+
+        if (state.mode === '123') {
+          const names = ['Level 1: 1-5', 'Level 2: 6-10', 'Level 3: 1-10'];
+          ctx.fillStyle = 'rgb(255,200,100)';
+          ctx.fillText(names[state.numberLevel], barX, barY + 22);
+        }
+
+        // Bubbles
+        for (const b of state.bubbles) b.draw();
+
+        // Wrong flash
+        if (state.wrongFlash > 0) {
+          ctx.globalAlpha = 0.31 * state.wrongFlash / 20;
+          ctx.fillStyle = 'rgb(255,30,30)';
+          ctx.fillRect(0, 0, WIDTH, HEIGHT);
+          ctx.globalAlpha = 1;
+        }
+
+        // Streak
+        if (state.streak > 1) {
+          ctx.font = 'bold 36px Arial';
+          ctx.fillStyle = CELEBRATION_COLORS[tick % CELEBRATION_COLORS.length];
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillText(`Streak: ${state.streak}`, 20, HEIGHT - 30);
+        }
+
+      } else if (state.gameState === STATE_CELEBRATE) {
+        for (const b of state.bubbles) { b.update(tick); b.draw(); }
+        drawBigTarget(state.target, tick);
+        for (const c of state.confetti) c.draw();
+        for (const cs of state.celebStars) cs.draw();
+
+      } else if (state.gameState === STATE_SHOW_IMAGE) {
+        // Ease
+        let ease;
+        if (state.imageScale < 1.0) {
+          ease = 1.0 - Math.pow(1.0 - state.imageScale, 3);
+          if (state.imageScale > 0.7) ease = 1.0 + 0.08 * Math.sin((state.imageScale - 0.7) * 10);
+        } else {
+          ease = 1.0 + 0.02 * Math.sin(tick * 0.08);
+        }
+
+        let bottomOfImages = HEIGHT / 2;
+        let label = getShowcaseLabel(state.mode, state.target);
+
+        if (state.mode === 'colors') {
+          const rgb = COLOR_RGB[state.target] || 'rgb(200,200,200)';
+          // Match the visual diameter of other showcase images (min(W,H)/3)
+          const radius = Math.max(1, Math.floor(Math.min(WIDTH, HEIGHT) / 6 * ease));
+          if (radius > 0) {
+            const cx = WIDTH / 2;
+            const cy = HEIGHT / 2 - 40;
+            ctx.fillStyle = rgb;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = WHITE;
+            ctx.stroke();
+            bottomOfImages = cy + radius;
+          }
+
+        } else if (state.mode === '123') {
+          const count = parseInt(state.target, 10);
+          const img = imgFor('Cat');
+          if (img) {
+            const baseSize = Math.min(WIDTH, HEIGHT) / 3;
+            let catSize = Math.min(baseSize, (WIDTH - 100) / Math.max(count, 1) - 20);
+            catSize = Math.max(60, catSize * ease);
+            const totalW = count * catSize + (count - 1) * 20;
+            const startX = WIDTH / 2 - totalW / 2;
+            const catY = HEIGHT / 2 - catSize / 2 - 30;
+            for (let i = 0; i < count; i++) {
+              const delay = i * 8;
+              const elapsed = tick - state.showImageTimer - delay;
+              if (elapsed > 0) {
+                const bounce = Math.sin(elapsed * 0.08 + i) * 5;
+                const cx = startX + i * (catSize + 20);
+                ctx.drawImage(img, cx, catY + bounce, catSize, catSize);
+              }
+            }
+            bottomOfImages = catY + catSize;
+          }
+
+        } else if (state.mode === 'abc') {
+          const word = LETTER_WORDS[state.target];
+          const img = imgFor(word);
+          if (img) {
+            const baseSize = Math.min(WIDTH, HEIGHT) / 3;
+            const sw = Math.max(1, baseSize * ease);
+            const sh = sw;
+            const ix = WIDTH / 2 - sw / 2;
+            const iy = HEIGHT / 2 - sh / 2 - 40;
+            ctx.drawImage(img, ix, iy, sw, sh);
+            bottomOfImages = iy + sh;
+          }
+
+        } else {
+          // shapes / animals / fruits / vehicles
+          const img = imgFor(state.target);
+          if (img) {
+            const baseSize = Math.min(WIDTH, HEIGHT) / 3;
+            const sw = Math.max(1, baseSize * ease);
+            const sh = sw;
+            const ix = WIDTH / 2 - sw / 2;
+            const iy = HEIGHT / 2 - sh / 2 - 40;
+            ctx.drawImage(img, ix, iy, sw, sh);
+            bottomOfImages = iy + sh;
+          }
+        }
+
+        const textY = Math.min(HEIGHT - 160, bottomOfImages + 20);
+        drawRainbowCenteredText(label, textY, tick, [64, 48, 36, 28]);
+
+        if (state.imageScale >= 1.0) {
+          const pulse = 0.7 + 0.3 * Math.sin(tick * 0.08);
+          ctx.globalAlpha = pulse;
+          ctx.font = 'bold 36px Arial';
+          ctx.fillStyle = WHITE;
+          ctx.textAlign = 'center';
+          ctx.fillText('Tap anywhere to continue!', WIDTH / 2, HEIGHT - 80);
+          ctx.textAlign = 'start';
+          ctx.globalAlpha = 1;
+        }
+
+        for (const c of state.confetti) c.draw();
+      }
+
+      // ESC hint in-game
+      if (state.gameState !== STATE_MENU) {
+        ctx.font = '28px Arial';
+        ctx.fillStyle = 'rgb(120,120,140)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('ESC = menu', WIDTH - 20, HEIGHT - 20);
+        ctx.textAlign = 'start';
+      }
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

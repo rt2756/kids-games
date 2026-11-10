@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Heavy or Light?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #30cfd0 0%, #5b6ee8 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0e3a3a 0%, #1a2050 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.4vw,28px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #seesaw { position:relative; width:min(88vw,420px); height:230px; margin-bottom:8px; }
+  #beam { position:absolute; left:50%; top:110px; width:100%; height:14px; background:#8d5524; border-radius:8px;
+    transform:translateX(-50%) rotate(0deg); transition:transform .8s cubic-bezier(.34,1.56,.64,1); transform-origin:center; }
+  #pivot { position:absolute; left:50%; top:118px; transform:translateX(-50%); width:0; height:0;
+    border-left:26px solid transparent; border-right:26px solid transparent; border-bottom:70px solid #6b3f17; }
+  .pan { position:absolute; top:-86px; width:96px; height:86px; display:flex; align-items:flex-end; justify-content:center; }
+  .pan .obj { border:none; background:rgba(255,255,255,.9); border-radius:18px; padding:8px 12px; cursor:pointer;
+    font-size:52px; line-height:1; box-shadow:0 6px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .pan .obj:active { transform:scale(.94); }
+  .pan .obj.right { background:#b6f09c; }
+  .pan .obj.wrong { animation:shake .35s; }
+  #panL { left:0; } #panR { right:0; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="q">Tap the heavier one!</h1>
+  <div id="seesaw">
+    <div id="pivot"></div>
+    <div id="beam">
+      <div class="pan" id="panL"><button class="obj" id="objL"></button></div>
+      <div class="pan" id="panR"><button class="obj" id="objR"></button></div>
+    </div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // Objects with a weight rank (higher = heavier). Pairs differ by >= 2 ranks.
+    const OBJECTS=[
+      ['🪶','feather',1],['🎈','balloon',1],['🦋','butterfly',1],
+      ['🍎','apple',3],['⚽','football',3],['📕','book',3],
+      ['🐶','dog',5],['🧱','pile of bricks',6],['🛒','full trolley',6],
+      ['🐘','elephant',9],['🚗','car',8],['🦛','hippo',9],
+    ];
+    const beam=document.getElementById('beam'), qEl=document.getElementById('q'),
+      objL=document.getElementById('objL'), objR=document.getElementById('objR'), scoreEl=document.getElementById('score');
+    let left, right, wantHeavy, score=0, locked=false;
+
+    function newRound(){
+      locked=false;
+      objL.classList.remove('right','wrong'); objR.classList.remove('right','wrong');
+      do {
+        left=KidsUtil.rand(OBJECTS); right=KidsUtil.rand(OBJECTS);
+      } while(Math.abs(left[2]-right[2])<2);
+      wantHeavy=Math.random()<0.5;
+      objL.textContent=left[0]; objR.textContent=right[0];
+      // Tilt the seesaw: heavier side goes down.
+      const tilt=left[2]>right[2]?8:-8;
+      beam.style.transform='translateX(-50%) rotate('+tilt+'deg)';
+      qEl.textContent=wantHeavy?'Tap the HEAVIER one!':'Tap the LIGHTER one!';
+      KidsAudio.speak('A '+left[1]+' and a '+right[1]+'. Tap the '+(wantHeavy?'heavier':'lighter')+' one!');
+    }
+    function pick(side){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      const me=side==='L'?left:right, other=side==='L'?right:left;
+      const btn=side==='L'?objL:objR;
+      const isCorrect=wantHeavy ? me[2]>other[2] : me[2]<other[2];
+      if(isCorrect){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! The '+me[1]+' is '+(wantHeavy?'heavier':'lighter')+' than the '+other[1]+'!');
+        confetti(); setTimeout(newRound,2200);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Look how the seesaw tips! Try again.');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    objL.onclick=()=>pick('L'); objR.onclick=()=>pick('R');
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Find the Same One</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #84fab0 0%, #8fd3f4 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 16px 10px 6px;
+  }
+  #target-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  #target {
+    background: white;
+    border: 6px solid #ffd700;
+    border-radius: 26px;
+    width: clamp(110px, 22vh, 170px);
+    height: clamp(110px, 22vh, 170px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(70px, 14vh, 110px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.2);
+    user-select: none;
+  }
+  #target.match { animation: cheer 0.8s ease; }
+  #stars {
+    min-height: 30px;
+    font-size: 24px;
+    letter-spacing: 4px;
+    user-select: none;
+    margin: 4px 0;
+  }
+  #choices {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(12px, 4vw, 40px);
+    padding: 0 12px 20px;
+    min-height: 0;
+    flex-wrap: wrap;
+  }
+  .card {
+    background: white;
+    border-radius: 26px;
+    width: clamp(100px, 20vw, 170px);
+    height: clamp(100px, 20vw, 170px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(64px, 13vw, 110px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.2);
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.12s;
+  }
+  .card:active { transform: scale(0.93); }
+  .card.match { animation: cheer 0.8s ease; border: 6px solid #ffd700; }
+  @keyframes cheer {
+    0%,100% { transform: scale(1); }
+    30%     { transform: scale(1.18) rotate(-5deg); }
+    60%     { transform: scale(1.05) rotate(4deg); }
+  }
+  .card.nope { animation: nope 0.5s ease; }
+  @keyframes nope {
+    0%,100% { transform: translateX(0); }
+    30%     { transform: translateX(-12px); }
+    60%     { transform: translateX(12px); }
+  }
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.7s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0);      opacity: 1; }
+    to   { transform: translateY(105vh) rotate(380deg); opacity: 0.8; }
+  }
+</style>
+</head>
+<body>
+  <h1>Find the same one! 🔍</h1>
+  <div id="target-wrap">
+    <div id="target"></div>
+    <div id="stars"></div>
+  </div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // n = plural name, c = category (distractors come from the same category)
+    const ITEMS = [
+      { e: '🍎', n: 'apples', c: 'fruit' },     { e: '🍌', n: 'bananas', c: 'fruit' },
+      { e: '🍇', n: 'grapes', c: 'fruit' },     { e: '🍓', n: 'strawberries', c: 'fruit' },
+      { e: '🍊', n: 'oranges', c: 'fruit' },    { e: '🍉', n: 'watermelons', c: 'fruit' },
+      { e: '🐶', n: 'dogs', c: 'animal' },      { e: '🐱', n: 'cats', c: 'animal' },
+      { e: '🐰', n: 'bunnies', c: 'animal' },   { e: '🦊', n: 'foxes', c: 'animal' },
+      { e: '🐼', n: 'pandas', c: 'animal' },    { e: '🐸', n: 'frogs', c: 'animal' },
+      { e: '🦁', n: 'lions', c: 'animal' },     { e: '🐵', n: 'monkeys', c: 'animal' },
+      { e: '🚗', n: 'cars', c: 'vehicle' },     { e: '🚌', n: 'buses', c: 'vehicle' },
+      { e: '🚂', n: 'trains', c: 'vehicle' },   { e: '✈️', n: 'planes', c: 'vehicle' },
+      { e: '🚒', n: 'fire trucks', c: 'vehicle' }, { e: '🚲', n: 'bicycles', c: 'vehicle' },
+      { e: '🐝', n: 'bees', c: 'bug' },         { e: '🦋', n: 'butterflies', c: 'bug' },
+      { e: '🐞', n: 'ladybugs', c: 'bug' },     { e: '🐌', n: 'snails', c: 'bug' },
+      { e: '🌻', n: 'sunflowers', c: 'flower' },{ e: '🌹', n: 'roses', c: 'flower' },
+      { e: '🌷', n: 'tulips', c: 'flower' },    { e: '🌸', n: 'blossoms', c: 'flower' },
+    ];
+
+    const targetEl = document.getElementById('target');
+    const choicesEl = document.getElementById('choices');
+    const starsEl = document.getElementById('stars');
+    let streak = 0, score = 0, busy = false, current = null;
+
+    function choiceCount() {
+      if (streak < 3) return 2;
+      if (streak < 6) return 3;
+      return 4;
+    }
+
+    function newRound() {
+      current = KidsUtil.rand(ITEMS);
+      targetEl.textContent = current.e;
+      targetEl.classList.remove('match');
+
+      const pool = ITEMS.filter(i => i.c === current.c && i.e !== current.e);
+      const distractors = KidsUtil.shuffle(pool).slice(0, choiceCount() - 1);
+      const cards = KidsUtil.shuffle([current, ...distractors]);
+
+      choicesEl.innerHTML = '';
+      cards.forEach(item => {
+        const c = document.createElement('div');
+        c.className = 'card';
+        c.textContent = item.e;
+        c.addEventListener('pointerdown', () => pick(c, item));
+        choicesEl.appendChild(c);
+      });
+      KidsAudio.speak('Find the same one!');
+    }
+
+    function pick(cardEl, item) {
+      if (busy) return;
+      if (item.e === current.e) {
+        busy = true;
+        cardEl.classList.add('match');
+        targetEl.classList.add('match');
+        KidsAudio.playChime('yay');
+        KidsAudio.speak(`Yes! Two ${current.n}!`);
+        score++;
+        streak++;
+        starsEl.textContent = '⭐'.repeat(((score - 1) % 10) + 1);
+        if (score % 5 === 0) confettiBurst();
+        setTimeout(() => { busy = false; newRound(); }, 1800);
+      } else {
+        cardEl.classList.add('nope');
+        KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Not that one! Find the same one!');
+        setTimeout(() => cardEl.classList.remove('nope'), 600);
+      }
+    }
+
+    function confettiBurst() {
+      for (let i = 0; i < 26; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(['🎉', '⭐', '💚', '✨', '🎈']);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2300);
+      }
+    }
+
+    newRound();
+  </script>
+</body>
+</html>

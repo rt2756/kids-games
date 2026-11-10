@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Hungry Gator</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #2af598 0%, #009efd 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0a3a28 0%, #062a44 100%); }
+  h1 { color:#04344a; font-weight:900; font-size:clamp(18px,4.4vw,30px); margin:0; padding:0 16px; text-align:center;
+    position:fixed; top:96px; left:0; right:0; }
+  html[data-theme="dark"] h1 { color:#bfefff; }
+  #row { display:flex; align-items:center; gap:clamp(10px,4vw,40px); }
+  .num {
+    width:clamp(90px,26vw,150px); height:clamp(90px,26vw,150px); border-radius:28px; background:#fff;
+    color:#0077c2; font-weight:900; font-size:clamp(50px,16vw,96px); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 10px 0 rgba(0,0,0,.2); transition:transform .1s;
+  }
+  .num:active { transform:translateY(4px); }
+  .num.eaten { animation:eaten .5s forwards; }
+  @keyframes eaten { to { transform:scale(.2) translateY(10px); opacity:0; } }
+  .num.wrong { animation:shake .4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #gator { font-size:clamp(54px,16vw,100px); line-height:1; transition:transform .2s; }
+  #gator.left { transform:scaleX(-1); }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#04344a; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#bfefff; }
+  .confetti { position:fixed; font-size:28px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="title">Tap the BIGGER number!</h1>
+  <div id="row">
+    <div class="num" id="left"></div>
+    <div id="gator">🐊</div>
+    <div class="num" id="right"></div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const leftEl = document.getElementById('left');
+    const rightEl = document.getElementById('right');
+    const gator = document.getElementById('gator');
+    const titleEl = document.getElementById('title');
+    const scoreEl = document.getElementById('score');
+    let a, b, wantBigger = true, score = 0, locked = false;
+
+    function newRound() {
+      locked = false;
+      gator.className = '';
+      leftEl.className = 'num'; rightEl.className = 'num';
+      do { a = 1 + Math.floor(Math.random()*20); b = 1 + Math.floor(Math.random()*20); } while (a === b);
+      leftEl.textContent = a; rightEl.textContent = b;
+      wantBigger = Math.random() < 0.6;
+      titleEl.textContent = wantBigger ? 'Tap the BIGGER number!' : 'Tap the SMALLER number!';
+      KidsAudio.speak(wantBigger ? 'Tap the bigger number!' : 'Tap the smaller number!');
+    }
+
+    function pick(val, el, isLeft) {
+      if (locked) return;
+      try { KidsAudio.getAudio(); } catch(e) {}
+      const want = wantBigger ? Math.max(a,b) : Math.min(a,b);
+      if (val === want) {
+        locked = true;
+        // Queue the next round first: if anything in the celebration throws,
+        // the game must still move on instead of staying locked forever.
+        setTimeout(newRound, 2000);
+        gator.classList.toggle('left', isLeft);
+        KidsAudio.speak('Chomp!');
+        setTimeout(() => {
+          el.classList.add('eaten');
+          score++; scoreEl.textContent = '⭐ ' + score;
+          KidsAudio.playChime('yay');
+          KidsAudio.speak(`Yes! ${val} is ${wantBigger ? 'bigger' : 'smaller'}!`);
+          confetti();
+        }, 350);
+      } else {
+        el.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        setTimeout(() => el.classList.remove('wrong'), 450);
+      }
+    }
+    leftEl.onclick = () => pick(a, leftEl, true);
+    rightEl.onclick = () => pick(b, rightEl, false);
+
+    function confetti() {
+      for (let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+        c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw';
+        c.style.animationDelay=(Math.random()*0.4)+'s'; document.body.appendChild(c); setTimeout(()=>c.remove(),2100); }
+    }
+    newRound();
+  </script>
+</body>
+</html>

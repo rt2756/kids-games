@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Animal Homes</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #f6d365 0%, #fda085 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a2c14 0%, #3a2014 100%); }
+  h1 { color:#7a3b00; font-weight:900; font-size:clamp(20px,5vw,32px); margin:0; padding:84px 16px 4px; text-align:center; }
+  html[data-theme="dark"] h1 { color:#ffd9b0; }
+  #animal { font-size:clamp(90px,26vw,170px); line-height:1; margin:6px 0; }
+  #q { color:#7a3b00; font-weight:800; font-size:clamp(17px,4.4vw,24px); margin-bottom:6px; }
+  html[data-theme="dark"] #q { color:#ffd9b0; }
+  #choices { display:flex; gap:clamp(12px,4vw,26px); flex-wrap:wrap; justify-content:center; padding:6px 10px 20px; }
+  .choice { display:flex; flex-direction:column; align-items:center; gap:4px; width:clamp(96px,26vw,140px); padding:12px 6px;
+    border-radius:22px; background:#fff; cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.16); transition:transform .08s; }
+  .choice .ce { font-size:clamp(46px,12vw,76px); line-height:1; }
+  .choice .cl { font-weight:900; color:#c2560a; font-size:clamp(14px,3.4vw,18px); }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#7a3b00; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#ffd9b0; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Where does it live?</h1>
+  <div id="animal"></div>
+  <div id="q"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const PAIRS=[
+      { a:'🐝', an:'bee',    h:'🍯', hn:'hive' },
+      { a:'🐦', an:'bird',   h:'🪺', hn:'nest' },
+      { a:'🕷️', an:'spider', h:'🕸️', hn:'web' },
+      { a:'🐟', an:'fish',   h:'🌊', hn:'water' },
+      { a:'🐴', an:'horse',  h:'🛖', hn:'stable' },
+      { a:'🐶', an:'dog',    h:'🏠', hn:'kennel' },
+    ];
+    const animalEl=document.getElementById('animal'), qEl=document.getElementById('q'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let cur, score=0, locked=false;
+
+    function newRound(){
+      locked=false;
+      cur=KidsUtil.rand(PAIRS);
+      animalEl.textContent=cur.a; qEl.textContent='Where does the '+cur.an+' live?';
+      const others=KidsUtil.shuffle(PAIRS.filter(p=>p.hn!==cur.hn)).slice(0,2);
+      choicesEl.innerHTML='';
+      KidsUtil.shuffle([cur,...others]).forEach(p=>{
+        const c=document.createElement('div'); c.className='choice';
+        c.innerHTML='<span class="ce">'+p.h+'</span><span class="cl">'+p.hn+'</span>';
+        c.onclick=()=>pick(p,c); choicesEl.appendChild(c);
+      });
+      KidsAudio.speak('Where does the '+cur.an+' live?');
+    }
+    function pick(p,c){
+      if(locked) return; locked=true; try{KidsAudio.getAudio();}catch(e){}
+      if(p.hn===cur.hn){ c.classList.add('right'); score++; scoreEl.textContent='⭐ '+score;
+        KidsAudio.playChime('yay'); KidsAudio.speak('Yes! The '+cur.an+' lives in a '+cur.hn+'!'); confetti(); setTimeout(newRound,2000);
+      } else { c.classList.add('wrong'); locked=false; KidsAudio.playChime('uhoh'); KidsAudio.speak('Try again.'); setTimeout(()=>c.classList.remove('wrong'),450); }
+    }
+    function confetti(){ for(let i=0;i<20;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

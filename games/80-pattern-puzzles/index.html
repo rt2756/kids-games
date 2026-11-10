@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Pattern Puzzles</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #fa709a 0%, #fee140 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #4e1a2e 0%, #4e4212 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #seq { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; padding:0 10px; margin-bottom:18px; }
+  .cell { width:clamp(48px,12vw,68px); height:clamp(48px,12vw,68px); background:rgba(255,255,255,.85); border-radius:14px;
+    display:flex; align-items:center; justify-content:center; font-size:clamp(28px,8vw,42px); box-shadow:0 5px 0 rgba(0,0,0,.15); }
+  .cell.q { background:rgba(255,255,255,.35); border:3px dashed #fff; color:#fff; font-weight:900; }
+  .cell.reveal { animation:popin .4s; }
+  @keyframes popin { from{transform:scale(.3)} to{transform:scale(1)} }
+  #choices { display:flex; gap:14px; justify-content:center; }
+  .choice { border:none; border-radius:16px; background:#fff; cursor:pointer;
+    font-size:clamp(34px,9vw,50px); width:clamp(70px,18vw,96px); height:clamp(70px,18vw,96px);
+    box-shadow:0 7px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit; line-height:1; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>What comes next in the pattern?</h1>
+  <div id="seq"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const POOLS=[['🍎','🍌','🍇'],['🔴','🟡','🔵'],['🐶','🐱','🐭'],['⭐','🌙','☁️'],['🚗','🚌','🚲'],['🌸','🌻','🌷']];
+    // Pattern shapes get harder than the toddler game: AB, AAB, ABB, ABC.
+    const SHAPES=[[0,1],[0,0,1],[0,1,1],[0,1,2]];
+    const seqEl=document.getElementById('seq'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function newRound(){
+      locked=false; seqEl.innerHTML=''; choicesEl.innerHTML='';
+      const pool=KidsUtil.shuffle(KidsUtil.rand(POOLS));
+      const shape=KidsUtil.rand(SHAPES);
+      // Build a sequence of 2 full repeats + start of a third, ending with "?"
+      const seq=[];
+      const total=shape.length*2+Math.floor(Math.random()*shape.length)+1; // at least 2 repeats + 1
+      for(let i=0;i<total;i++) seq.push(pool[shape[i%shape.length]]);
+      answer=pool[shape[total%shape.length]];
+      seq.forEach(e=>{ const d=document.createElement('div'); d.className='cell'; d.textContent=e; seqEl.appendChild(d); });
+      const q=document.createElement('div'); q.className='cell q'; q.textContent='?'; seqEl.appendChild(q);
+      const used=[...new Set(shape.map(i=>pool[i]))];
+      const opts=new Set([answer]);
+      used.forEach(u=>opts.add(u));
+      while(opts.size<3) opts.add(KidsUtil.rand(pool));
+      KidsUtil.shuffle([...opts].slice(0,3)).forEach(e=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=e;
+        b.onclick=()=>pick(e,b,q); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('Look at the pattern. What comes next?');
+    }
+    function pick(e,btn,q){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(err){}
+      if(e===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right');
+        q.textContent=e; q.classList.remove('q'); q.classList.add('reveal');
+        KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! You found the pattern!');
+        confetti(); setTimeout(newRound,2000);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Say the pattern out loud and try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

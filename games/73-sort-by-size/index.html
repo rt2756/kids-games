@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Small to Big</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #fddb92 0%, #d1fdff 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #4e3a12 0%, #123a4e 100%); }
+  h1 { color:#6b4c00; font-weight:900; font-size:clamp(18px,4.4vw,28px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; }
+  html[data-theme="dark"] h1 { color:#ffe9b0; }
+  #row { display:flex; gap:18px; align-items:flex-end; justify-content:center; flex-wrap:wrap; padding:0 10px; }
+  .item { border:none; background:rgba(255,255,255,.55); border-radius:22px; cursor:pointer; padding:14px 18px;
+    box-shadow:0 7px 0 rgba(0,0,0,.15); transition:transform .12s, opacity .3s; line-height:1; font-family:inherit; }
+  .item:active { transform:scale(.94); }
+  .item.done { background:#b6f09c; transform:scale(.9); pointer-events:none; }
+  .item.wrong { animation:shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #slots { display:flex; gap:10px; margin-top:34px; align-items:flex-end; height:90px; }
+  .slot { width:72px; height:72px; border:3px dashed rgba(0,0,0,.25); border-radius:16px; display:flex; align-items:center; justify-content:center; }
+  html[data-theme="dark"] .slot { border-color:rgba(255,255,255,.35); }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#6b4c00; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#ffe9b0; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Tap them from smallest to biggest!</h1>
+  <div id="row"></div>
+  <div id="slots"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const EMOJI=['🐶','🐱','🐻','🐸','🦆','🐠','🚗','🎈','⭐','🍎','🦋','🐢'];
+    const SIZES=[34,58,86]; // px font sizes: small, medium, big
+    const row=document.getElementById('row'), slots=document.getElementById('slots'), scoreEl=document.getElementById('score');
+    let next, score=0, locked=false;
+
+    function newRound(){
+      locked=false; next=0;
+      row.innerHTML=''; slots.innerHTML='';
+      const emoji=KidsUtil.rand(EMOJI);
+      const order=KidsUtil.shuffle([0,1,2]); // display order of size ranks
+      order.forEach(rank=>{
+        const b=document.createElement('button'); b.className='item';
+        b.style.fontSize=SIZES[rank]+'px'; b.textContent=emoji; b.dataset.rank=rank;
+        b.onclick=()=>pick(b); row.appendChild(b);
+      });
+      for(let i=0;i<3;i++){ const s=document.createElement('div'); s.className='slot';
+        s.style.transform='scale('+(0.7+i*0.25)+')'; slots.appendChild(s); }
+      KidsAudio.speak('Tap the '+name(emoji)+'s from smallest to biggest!');
+    }
+    function name(e){
+      const names={'🐶':'dog','🐱':'cat','🐻':'bear','🐸':'frog','🦆':'duck','🐠':'fish','🚗':'car','🎈':'balloon','⭐':'star','🍎':'apple','🦋':'butterfly','🐢':'turtle'};
+      return names[e]||'thing';
+    }
+    function pick(b){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      const rank=+b.dataset.rank;
+      if(rank===next){
+        b.classList.add('done'); KidsAudio.playPop();
+        const slot=slots.children[next];
+        slot.textContent=b.textContent; slot.style.fontSize=(SIZES[rank]*0.7)+'px'; slot.style.borderStyle='solid';
+        next++;
+        const words=['Small!','Medium!','Big!'];
+        KidsAudio.speak(words[rank]);
+        if(next===3){
+          locked=true; score++; scoreEl.textContent='⭐ '+score;
+          KidsAudio.playChime('yay');
+          setTimeout(()=>KidsAudio.speak('Small, medium, big! Great sorting!'),500);
+          confetti(); setTimeout(newRound,2300);
+        }
+      } else {
+        b.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak(next===0?'Find the smallest one first!':'Which one comes next?');
+        setTimeout(()=>b.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

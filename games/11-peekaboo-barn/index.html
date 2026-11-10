@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Peekaboo Barn</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #87ceeb 0%, #b8e6f5 70%, #7ec850 70%, #5cab38 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  h1 {
+    color: white;
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 12px 0;
+  }
+  #sun {
+    position: fixed;
+    top: 26px; right: 40px;
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff176 30%, #ffd54f 70%);
+    box-shadow: 0 0 50px 20px rgba(255, 235, 59, 0.6);
+    animation: sunspin 14s linear infinite;
+  }
+  @keyframes sunspin { to { transform: rotate(360deg); } }
+  .cloud {
+    position: fixed;
+    top: 8%;
+    width: 130px; height: 44px;
+    background: white;
+    border-radius: 999px;
+    opacity: 0.9;
+    animation: drift linear infinite;
+  }
+  .cloud::before {
+    content: '';
+    position: absolute;
+    top: -22px; left: 30px;
+    width: 60px; height: 50px;
+    background: white;
+    border-radius: 50%;
+  }
+  @keyframes drift {
+    from { left: -160px; }
+    to   { left: 105vw; }
+  }
+
+  /* ---- barn ---- */
+  #barn {
+    width: min(88vw, 620px);
+    position: relative;
+  }
+  #roof {
+    height: clamp(60px, 12vh, 95px);
+    background: #8d4a2f;
+    clip-path: polygon(8% 100%, 26% 0, 74% 0, 92% 100%);
+    border-radius: 6px;
+  }
+  #loft {
+    position: absolute;
+    top: clamp(8px, 1.5vh, 16px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: clamp(44px, 8vh, 64px);
+    height: clamp(44px, 8vh, 64px);
+    background: #fff8e1;
+    border: 6px solid #6d3620;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 2;
+  }
+  #peeker {
+    font-size: clamp(28px, 5.5vh, 44px);
+    transform: translateY(110%);
+    transition: transform 0.45s ease;
+    line-height: 1;
+  }
+  #peeker.up { transform: translateY(8%); }
+  #facade {
+    background: #c0392b;
+    border: 6px solid #96281b;
+    border-radius: 0 0 16px 16px;
+    padding: clamp(14px, 3vh, 30px);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(14px, 3vh, 26px);
+  }
+
+  .stall {
+    position: relative;
+    aspect-ratio: 1 / 0.92;
+    perspective: 700px;
+    border-radius: 12px;
+    background: #3e2410;       /* dark inside the barn */
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+  }
+  .animal {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(60px, 13vh, 110px);
+    user-select: none;
+  }
+  .stall.open .animal { animation: popout 0.55s ease; }
+  @keyframes popout {
+    0%   { transform: scale(0.2); }
+    60%  { transform: scale(1.25) rotate(-6deg); }
+    100% { transform: scale(1); }
+  }
+  .door {
+    position: absolute;
+    inset: 0;
+    background: #e74c3c;
+    border: 4px solid #fff;
+    border-radius: 12px;
+    transform-origin: left center;
+    transition: transform 0.5s ease;
+    cursor: pointer;
+    z-index: 3;
+    overflow: hidden;
+  }
+  .door::before, .door::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: -25%;
+    width: 150%;
+    height: 12%;
+    background: #fff;
+  }
+  .door::before { transform: translateY(-50%) rotate(35deg); }
+  .door::after  { transform: translateY(-50%) rotate(-35deg); }
+  .knob {
+    position: absolute;
+    right: 8%; top: 46%;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #ffd54f;
+    z-index: 4;
+  }
+  .stall.open .door { transform: rotateY(-108deg); }
+
+  .sparkle {
+    position: fixed;
+    font-size: 26px;
+    pointer-events: none;
+    z-index: 100;
+    animation: spark 0.9s ease-out forwards;
+  }
+  @keyframes spark {
+    from { transform: scale(0.4) translateY(0);     opacity: 1; }
+    to   { transform: scale(1.4) translateY(-60px); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+  <div id="sun"></div>
+  <div class="cloud" style="animation-duration: 38s;"></div>
+  <div class="cloud" style="animation-duration: 55s; animation-delay: -20s; top: 16%;"></div>
+
+  <h1>Peekaboo Barn! 🙈 Tap a door!</h1>
+
+  <div id="barn">
+    <div id="roof"></div>
+    <div id="loft"><span id="peeker">🐭</span></div>
+    <div id="facade">
+      <div class="stall"><div class="animal"></div><div class="door"><div class="knob"></div></div></div>
+      <div class="stall"><div class="animal"></div><div class="door"><div class="knob"></div></div></div>
+      <div class="stall"><div class="animal"></div><div class="door"><div class="knob"></div></div></div>
+      <div class="stall"><div class="animal"></div><div class="door"><div class="knob"></div></div></div>
+    </div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const ANIMALS = [
+      { e: '🐮', n: 'cow' },     { e: '🐷', n: 'pig' },
+      { e: '🐑', n: 'sheep' },   { e: '🐴', n: 'horse' },
+      { e: '🐶', n: 'dog' },     { e: '🐱', n: 'cat' },
+      { e: '🦆', n: 'duck' },    { e: '🐓', n: 'rooster' },
+    ];
+    const stalls = [...document.querySelectorAll('.stall')];
+    const assigned = [];   // animal object per stall
+
+    function assign(i, avoid) {
+      const taken = assigned.filter((a, j) => a && j !== i).map(a => a.n);
+      const pool = ANIMALS.filter(a => !taken.includes(a.n) && (!avoid || a.n !== avoid));
+      assigned[i] = KidsUtil.rand(pool);
+      stalls[i].querySelector('.animal').textContent = assigned[i].e;
+    }
+    stalls.forEach((_, i) => assign(i));
+
+    function playAnimal(name) {
+      const a = new Audio(`sounds/${name}.ogg`);
+      a.play().catch(() => KidsAudio.playChime('yay'));
+    }
+
+    function sparkleAt(x, y) {
+      for (let i = 0; i < 6; i++) {
+        const s = document.createElement('div');
+        s.className = 'sparkle';
+        s.textContent = KidsUtil.rand(['✨', '⭐', '💫']);
+        s.style.left = (x + (Math.random() - 0.5) * 120) + 'px';
+        s.style.top  = (y + (Math.random() - 0.5) * 80) + 'px';
+        document.body.appendChild(s);
+        setTimeout(() => s.remove(), 1000);
+      }
+    }
+
+    stalls.forEach((stall, i) => {
+      let closeTimer = null;
+      stall.addEventListener('pointerdown', () => {
+        const animal = assigned[i];
+        if (stall.classList.contains('open')) {
+          // Tapping an open stall replays the sound.
+          playAnimal(animal.n);
+          return;
+        }
+        stall.classList.add('open');
+        playAnimal(animal.n);
+        KidsAudio.speak(KidsUtil.rand(['Peekaboo!', 'Surprise!', 'Boo!']) + ` A ${animal.n}!`);
+        const r = stall.getBoundingClientRect();
+        sparkleAt(r.left + r.width / 2, r.top + r.height / 3);
+
+        clearTimeout(closeTimer);
+        closeTimer = setTimeout(() => {
+          stall.classList.remove('open');
+          // New animal sneaks in once the door has shut.
+          setTimeout(() => assign(i, animal.n), 550);
+        }, 2800);
+      });
+    });
+
+    // A little mouse (or friend) peeks from the loft window now and then.
+    const peeker = document.getElementById('peeker');
+    setInterval(() => {
+      peeker.textContent = KidsUtil.rand(['🐭', '🐤', '🦉', '🐰']);
+      peeker.classList.add('up');
+      setTimeout(() => peeker.classList.remove('up'), 1800);
+    }, 7000);
+  </script>
+</body>
+</html>

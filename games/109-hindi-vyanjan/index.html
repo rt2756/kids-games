@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Hindi Vyanjan</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#ffd1dc,#ff9a76); --av-ink: #7a1f3d; }
+  .roman { opacity:.75; font-size:.65em; }
+  .pair { display:flex; align-items:center; gap:clamp(12px,5vmin,40px); }
+  .akshar { font-size:clamp(80px,24vmin,170px); font-weight:900; line-height:1.1; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: Hindi consonants (व्यंजन) — each letter with a word that starts with it.
+    const K = KidsKit;
+    const V = [['क','कबूतर','ka','kabootar','🕊️'],['ख','खरगोश','kha','khargosh','🐇'],['ग','गाय','ga','gaay','🐄'],['घ','घर','gha','ghar','🏠'],
+      ['च','चम्मच','cha','chammach','🥄'],['छ','छाता','chha','chhaata','☂️'],['ज','जहाज़','ja','jahaaz','🚢'],['झ','झंडा','jha','jhanda','🚩'],
+      ['ट','टमाटर','ta','tamaatar','🍅'],['ड','डमरू','da','damroo','🪘'],['ढ','ढोल','dha','dhol','🥁'],
+      ['त','तरबूज़','ta','tarbooz','🍉'],['थ','थाली','tha','thaali','🍽️'],['द','दरवाज़ा','da','darwaaza','🚪'],['ध','धनुष','dha','dhanush','🏹'],['न','नल','na','nal','🚰'],
+      ['प','पतंग','pa','patang','🪁'],['फ','फूल','pha','phool','🌸'],['ब','बकरी','ba','bakri','🐐'],['भ','भालू','bha','bhaaloo','🐻'],['म','मछली','ma','machhli','🐟'],
+      ['र','रेल','ra','rail','🚂'],['ल','लहसुन','la','lahsun','🧄'],['व','वर्षा','va','varsha','🌧️'],
+      ['श','शेर','sha','sher','🦁'],['स','सेब','sa','seb','🍎'],['ह','हाथी','ha','haathi','🐘']]
+      .map(a => ({ l: a[0], w: a[1], lr: a[2], wr: a[3], e: a[4] }));
+    const hi = (text, roman) => ({ text, roman, hindi: true });
+    const line = it => hi(it.l + ' से ' + it.w, it.lr + ' se ' + it.wr);
+    K.flashQuiz({
+      title: 'हिंदी व्यंजन · Hindi letters',
+      items: V,
+      card: it => '<div class="pair"><div class="akshar">' + it.l + '</div><div class="av-big">' + it.e + '</div></div>'
+        + '<div class="av-word">' + it.l + ' से ' + it.w + ' <span class="roman">' + it.wr + '</span></div>',
+      say: line,
+      ask: it => ({ show: '<div class="av-big">' + it.e + '</div><div class="av-word">' + it.w + ' <span class="roman">' + it.wr + '</span></div><div class="av-sub">Which letter does it start with?</div>',
+        say: hi(it.w + '. कौन सा अक्षर?', it.wr + '. Which letter?') }),
+      choice: it => '<span class="e" style="font-weight:900">' + it.l + '</span>',
+      praise: it => hi('शाबाश! ' + it.l + ' से ' + it.w, 'Shabaash! ' + it.lr + ' se ' + it.wr),
+    });
+  </script>
+</body>
+</html>

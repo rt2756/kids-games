@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>BODMAS Blitz</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #ed213a 0%, #93291e 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #4a0a12 0%, #3a1410 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #expr { color:#fff; font-weight:900; font-size:clamp(40px,11vw,70px); line-height:1.1; text-shadow:3px 3px 0 rgba(0,0,0,.25); margin-bottom:6px; }
+  #rule { color:#ffd54f; font-weight:800; font-size:clamp(15px,4vw,20px); min-height:30px; margin-bottom:12px; }
+  #choices { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#b71c1c; font-weight:900; cursor:pointer;
+    font-size:clamp(24px,7vw,36px); padding:14px 26px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Solve it in the right order!</h1>
+  <div id="expr"></div>
+  <div id="rule"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const exprEl=document.getElementById('expr'), ruleEl=document.getElementById('rule'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, trap, sayRule, score=0, locked=false;
+
+    function r(max,min=1){ return min+Math.floor(Math.random()*(max-min+1)); }
+    function newRound(){
+      locked=false; choicesEl.innerHTML=''; ruleEl.textContent='';
+      const type=Math.floor(Math.random()*4);
+      let text;
+      if(type===0){ // a + b × c
+        const a=r(9),b=r(9,2),c=r(9,2);
+        text=a+' + '+b+' × '+c; answer=a+b*c; trap=(a+b)*c;
+        sayRule='Multiply before you add!';
+      } else if(type===1){ // a × b − c
+        const b=r(9,2),c=r(9),a=r(9,2);
+        text=a+' × '+b+' − '+c; answer=a*b-c; trap=a*(b-c);
+        sayRule='Multiply first, then subtract!';
+      } else if(type===2){ // (a + b) × c
+        const a=r(8),b=r(8),c=r(9,2);
+        text='(' + a+' + '+b+') × '+c; answer=(a+b)*c; trap=a+b*c;
+        sayRule='Brackets first!';
+      } else { // a ÷ b + c  (clean division)
+        const b=r(9,2),q=r(9),c=r(9);
+        const a=b*q;
+        text=a+' ÷ '+b+' + '+c; answer=q+c; trap=Math.round(a/(b+c));
+        sayRule='Divide before you add!';
+      }
+      exprEl.textContent=text+' = ?';
+      const opts=new Set([answer]);
+      if(trap!==answer&&trap>0) opts.add(trap);
+      while(opts.size<3) opts.add(Math.max(0,answer+KidsUtil.rand([-3,-2,-1,1,2,3])));
+      KidsUtil.shuffle([...opts]).forEach(v=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=v;
+        b.onclick=()=>pick(v,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak(text.replace('×',' times ').replace('÷',' divided by ').replace('−',' minus ').replace('+',' plus ')+'. What is the answer?');
+    }
+    function pick(v,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(v===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); ruleEl.textContent=sayRule;
+        KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes, '+answer+'! '+sayRule);
+        confetti(); setTimeout(newRound,2500);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak(sayRule+' Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Prime Hunt</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #16bffd 0%, #cb3066 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #073a4e 0%, #44102a 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #num { color:#fff; font-weight:900; font-size:clamp(70px,18vw,120px); line-height:1; text-shadow:3px 3px 0 rgba(0,0,0,.2); }
+  #hint { color:#fff; font-weight:800; font-size:clamp(16px,4.4vw,22px); min-height:32px; margin:8px 0 14px; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #choices { display:flex; gap:16px; justify-content:center; }
+  .choice { border:none; border-radius:18px; font-weight:900; cursor:pointer; color:#fff;
+    font-size:clamp(20px,5.5vw,28px); padding:16px 26px;
+    box-shadow:0 7px 0 rgba(0,0,0,.22); transition:transform .08s; font-family:inherit; }
+  #btnPrime { background:#2e7d32; } #btnComposite { background:#ef6c00; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Prime or composite?</h1>
+  <div id="num"></div>
+  <div id="hint"></div>
+  <div id="choices">
+    <button class="choice" id="btnPrime">💎 Prime</button>
+    <button class="choice" id="btnComposite">🔨 Composite</button>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const numEl=document.getElementById('num'), hint=document.getElementById('hint'), scoreEl=document.getElementById('score');
+    let n, isPrime, score=0, locked=false;
+
+    function primeCheck(x){
+      if(x<2) return false;
+      for(let i=2;i*i<=x;i++) if(x%i===0) return false;
+      return true;
+    }
+    function smallestFactor(x){ for(let i=2;i*i<=x;i++) if(x%i===0) return i; return x; }
+    function newRound(){
+      locked=false; hint.textContent='';
+      // Mix primes and composites roughly evenly, from 2..50.
+      if(Math.random()<0.5){
+        const primes=[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47];
+        n=KidsUtil.rand(primes);
+      } else {
+        do { n=4+Math.floor(Math.random()*47); } while(primeCheck(n));
+      }
+      isPrime=primeCheck(n);
+      numEl.textContent=n;
+      KidsAudio.speak('Is '+n+' a prime number, or a composite number?');
+    }
+    function pick(saidPrime,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(saidPrime===isPrime){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        KidsAudio.playChime('yay');
+        if(isPrime){
+          hint.textContent=n+' is only divisible by 1 and '+n+'!';
+          KidsAudio.speak('Yes! '+n+' is prime. Only 1 and '+n+' divide it evenly!');
+        } else {
+          const f=smallestFactor(n);
+          hint.textContent=n+' = '+f+' × '+(n/f);
+          KidsAudio.speak('Yes! '+n+' is composite. '+f+' times '+(n/f)+' makes '+n+'!');
+        }
+        confetti(); setTimeout(newRound,2600);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Can any smaller number divide '+n+' evenly? Think again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    document.getElementById('btnPrime').onclick=e=>pick(true,e.currentTarget);
+    document.getElementById('btnComposite').onclick=e=>pick(false,e.currentTarget);
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Number Names</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #ff6a88 0%, #ff99ac 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a1620 0%, #3a2228 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(20px,5vw,32px); margin:0; padding:84px 16px 4px; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #cue { color:#fff; font-weight:900; font-size:clamp(64px,20vw,150px); line-height:1.1; margin:8px 0; text-shadow:2px 2px 0 rgba(0,0,0,.18); text-transform:capitalize; }
+  #dots { font-size:clamp(22px,6vw,40px); max-width:80vw; text-align:center; line-height:1.2; margin-bottom:4px; }
+  #q { color:#fff; font-weight:800; font-size:clamp(16px,4vw,22px); margin-bottom:6px; }
+  #choices { display:flex; gap:clamp(12px,4vw,24px); flex-wrap:wrap; justify-content:center; padding:6px 10px 20px; }
+  .choice { min-width:clamp(96px,24vw,150px); padding:16px 14px; border:none; border-radius:18px; background:#fff; color:#e23b6d;
+    font-weight:900; font-size:clamp(24px,6vw,36px); cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.16); transition:transform .08s; font-family:inherit; text-transform:capitalize; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; background:#ffd6e2; }
+  .choice.right { background:#b6f09c; color:#2d7a00; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Number Names</h1>
+  <div id="cue"></div>
+  <div id="dots"></div>
+  <div id="q"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const NAMES=['one','two','three','four','five','six','seven','eight','nine','ten'];
+    const cueEl=document.getElementById('cue'), dotsEl=document.getElementById('dots'), qEl=document.getElementById('q'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function newRound(){
+      locked=false; dotsEl.textContent='';
+      const n=1+Math.floor(Math.random()*10);
+      const wordMode=Math.random()<0.5; // true: show numeral, choose word
+      const opts=new Set([n]); while(opts.size<3) opts.add(1+Math.floor(Math.random()*10));
+      const arr=KidsUtil.shuffle([...opts]);
+      choicesEl.innerHTML='';
+      if(wordMode){
+        cueEl.textContent=n; dotsEl.textContent='🔵'.repeat(n); qEl.textContent='Tap the number name';
+        answer=NAMES[n-1];
+        arr.forEach(x=>{ const b=document.createElement('button'); b.className='choice'; b.textContent=NAMES[x-1]; b.onclick=()=>pick(NAMES[x-1],b); choicesEl.appendChild(b); });
+      } else {
+        cueEl.textContent=NAMES[n-1]; qEl.textContent='Tap the matching number';
+        answer=String(n);
+        arr.forEach(x=>{ const b=document.createElement('button'); b.className='choice'; b.textContent=x; b.onclick=()=>pick(String(x),b); choicesEl.appendChild(b); });
+      }
+      KidsAudio.speak(wordMode ? ('Which name is '+n+'?') : ('Which number is '+NAMES[n-1]+'?'));
+    }
+    function pick(v,b){
+      if(locked) return; locked=true; try{KidsAudio.getAudio();}catch(e){}
+      if(v===answer){ b.classList.add('right'); score++; scoreEl.textContent='⭐ '+score; KidsAudio.playChime('yay'); KidsAudio.speak('Yes! '+answer+'!'); confetti(); setTimeout(newRound,1700);
+      } else { b.classList.add('wrong'); locked=false; KidsAudio.playChime('uhoh'); KidsAudio.speak('Try again.'); setTimeout(()=>b.classList.remove('wrong'),450); }
+    }
+    function confetti(){ for(let i=0;i<20;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

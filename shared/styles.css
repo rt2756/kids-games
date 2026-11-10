@@ -1,0 +1,98 @@
+/* Shared styles for all games */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --shadow-color: rgba(0, 0, 0, 0.25);
+  --border-color: #e0e0e0;
+}
+
+html[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #f0f0f0;
+  --text-secondary: #b0b0b0;
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --border-color: #404040;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  transition: background-color 0.3s ease;
+}
+
+/* Back-to-hub button used by every game */
+.back-btn {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1000;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 34px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 6px 16px var(--shadow-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: transform 0.1s, background-color 0.3s ease, color 0.3s ease;
+}
+.back-btn:active { transform: scale(0.9); }
+
+html[data-theme="dark"] .back-btn {
+  background: rgba(50, 50, 50, 0.95);
+  color: #f0f0f0;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 28px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px var(--shadow-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: transform 0.1s, background-color 0.3s ease, color 0.3s ease;
+}
+.theme-toggle:active { transform: scale(0.9); }
+
+html[data-theme="dark"] .theme-toggle {
+  background: rgba(50, 50, 50, 0.95);
+  color: #f0f0f0;
+}
+
+/* Phones and tablets: 100vh includes the area hidden behind the browser's
+   address bar, which pushed the bottom row of buttons off screen. Game pages
+   size the body to the *visible* viewport instead. (The hub scrolls, so it
+   opts out with <html class="hub">.) */
+@supports (height: 100dvh) {
+  html:not(.hub) body { height: 100dvh !important; min-height: 0 !important; }
+}
+
+/* Toddler-proofing: no text-selection handles or long-press callouts. */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Code the Robot</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #396afc 0%, #2948ff 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #101f4a 0%, #0e1650 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(16px,4vw,24px); margin:0; position:fixed; top:88px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #board { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; background:rgba(255,255,255,.2);
+    padding:6px; border-radius:14px; margin-bottom:10px; }
+  .cell { width:clamp(44px,10.5vw,60px); height:clamp(44px,10.5vw,60px); background:rgba(255,255,255,.85); border-radius:8px;
+    display:flex; align-items:center; justify-content:center; font-size:clamp(26px,7vw,38px); line-height:1; }
+  html[data-theme="dark"] .cell { background:rgba(255,255,255,.7); }
+  #program { min-height:46px; display:flex; gap:6px; flex-wrap:wrap; justify-content:center; align-items:center;
+    background:rgba(0,0,0,.22); border-radius:12px; padding:6px 10px; margin-bottom:10px; width:min(92vw,420px); }
+  .step { font-size:24px; background:#fff; border-radius:8px; padding:2px 7px; animation:popin .2s; }
+  .step.active { background:#ffd54f; }
+  #program .hintTxt { color:#fff; font-weight:800; font-size:14px; opacity:.8; }
+  @keyframes popin { from{transform:scale(.3)} to{transform:scale(1)} }
+  #pad { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .pbtn { border:none; border-radius:14px; background:#fff; cursor:pointer; font-size:clamp(24px,6.5vw,32px);
+    width:clamp(56px,14vw,72px); height:clamp(56px,14vw,72px);
+    box-shadow:0 6px 0 rgba(0,0,0,.25); transition:transform .08s; font-family:inherit; line-height:1; }
+  .pbtn:active { transform:translateY(3px); }
+  #run { background:#2e7d32; color:#fff; font-weight:900; }
+  #clear { background:#ffcdd2; }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Program the robot to reach the star!</h1>
+  <div id="board"></div>
+  <div id="program"></div>
+  <div id="pad">
+    <button class="pbtn" data-d="up">⬆️</button>
+    <button class="pbtn" data-d="down">⬇️</button>
+    <button class="pbtn" data-d="left">⬅️</button>
+    <button class="pbtn" data-d="right">➡️</button>
+    <button class="pbtn" id="run">▶️</button>
+    <button class="pbtn" id="clear">🗑️</button>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const N=5;
+    const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+    const ARROW={up:'⬆️',down:'⬇️',left:'⬅️',right:'➡️'};
+    const board=document.getElementById('board'), programEl=document.getElementById('program'), scoreEl=document.getElementById('score');
+    let robot, star, rocks, program=[], score=0, running=false;
+
+    function cellAt(x,y){ return board.children[y*N+x]; }
+    function drawBoard(){
+      for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+        const c=cellAt(x,y);
+        c.textContent = (x===robot[0]&&y===robot[1]) ? '🤖'
+          : (x===star[0]&&y===star[1]) ? '⭐'
+          : rocks.some(r=>r[0]===x&&r[1]===y) ? '🪨' : '';
+      }
+    }
+    function drawProgram(activeIdx=-1){
+      programEl.innerHTML='';
+      if(!program.length){ programEl.innerHTML='<span class="hintTxt">Tap arrows to build your program, then press ▶️</span>'; return; }
+      program.forEach((d,i)=>{
+        const s=document.createElement('span'); s.className='step'+(i===activeIdx?' active':''); s.textContent=ARROW[d];
+        programEl.appendChild(s);
+      });
+    }
+    function newRound(){
+      running=false; program=[];
+      board.innerHTML='';
+      for(let i=0;i<N*N;i++){ const d=document.createElement('div'); d.className='cell'; board.appendChild(d); }
+      robot=[Math.floor(Math.random()*N),Math.floor(Math.random()*N)];
+      do { star=[Math.floor(Math.random()*N),Math.floor(Math.random()*N)]; }
+      while(star[0]===robot[0]&&star[1]===robot[1]);
+      rocks=[];
+      while(rocks.length<2){
+        const rk=[Math.floor(Math.random()*N),Math.floor(Math.random()*N)];
+        const clash=(rk[0]===robot[0]&&rk[1]===robot[1])||(rk[0]===star[0]&&rk[1]===star[1])||rocks.some(r=>r[0]===rk[0]&&r[1]===rk[1]);
+        if(!clash) rocks.push(rk);
+      }
+      drawBoard(); drawProgram();
+      KidsAudio.speak('Tap the arrows to write a program that takes the robot to the star. Watch out for rocks!');
+    }
+    document.querySelectorAll('.pbtn[data-d]').forEach(b=>{
+      b.onclick=()=>{
+        if(running||program.length>=12) return;
+        try{KidsAudio.getAudio();}catch(e){}
+        program.push(b.dataset.d); KidsAudio.playPop(); drawProgram();
+      };
+    });
+    document.getElementById('clear').onclick=()=>{ if(running) return; program=[]; drawProgram(); };
+    document.getElementById('run').onclick=()=>{
+      if(running||!program.length) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      running=true;
+      let i=0, pos=[...robot];
+      KidsAudio.speak('Running your program!');
+      const timer=setInterval(()=>{
+        if(i>=program.length){ clearInterval(timer); finish(pos); return; }
+        drawProgram(i);
+        const [dx,dy]=DIRS[program[i]];
+        const nx=pos[0]+dx, ny=pos[1]+dy;
+        if(nx<0||nx>=N||ny<0||ny>=N||rocks.some(r=>r[0]===nx&&r[1]===ny)){
+          clearInterval(timer); crash(pos); return;
+        }
+        pos=[nx,ny];
+        const prev=[...robot]; robot=pos; drawBoard(); KidsAudio.playPop();
+        if(pos[0]===star[0]&&pos[1]===star[1]){ clearInterval(timer); win(); return; }
+        i++;
+      },550);
+    };
+    function crash(pos){
+      KidsAudio.playChime('uhoh');
+      KidsAudio.speak('Bonk! The robot hit something. Fix your program and run again!');
+      running=false; drawProgram();
+    }
+    function finish(pos){
+      if(pos[0]===star[0]&&pos[1]===star[1]) { win(); return; }
+      KidsAudio.playChime('uhoh');
+      KidsAudio.speak('The program ended, but the robot is not at the star yet. Add more steps!');
+      running=false; drawProgram();
+    }
+    function win(){
+      score++; scoreEl.textContent='⭐ '+score;
+      KidsAudio.playChime('yay');
+      KidsAudio.speak('You did it! Your program worked perfectly. You are a real coder!');
+      confetti(); setTimeout(newRound,2600);
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🤖']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

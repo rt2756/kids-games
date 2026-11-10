@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Before, After, Between</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #f7971e 0%, #ffd200 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a2606 0%, #3a3206 100%); }
+  h1 { color:#7a4a00; font-weight:900; font-size:clamp(18px,4.6vw,28px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; }
+  html[data-theme="dark"] h1 { color:#ffe9a8; }
+  #seq { display:flex; gap:clamp(8px,2.5vw,16px); margin:8px 0; }
+  .cell { width:clamp(56px,16vw,90px); height:clamp(56px,16vw,90px); border-radius:16px; background:#fff; color:#e08a00;
+    display:flex; align-items:center; justify-content:center; font-weight:900; font-size:clamp(30px,8vw,52px); box-shadow:0 6px 0 rgba(0,0,0,.15); }
+  .cell.blank { background:rgba(255,255,255,.45); color:#fff; border:4px dashed #fff; }
+  #choices { display:flex; gap:clamp(12px,4vw,24px); margin-top:14px; }
+  .choice { width:clamp(78px,20vw,110px); height:clamp(72px,18vw,100px); border:none; border-radius:18px; background:#fff; color:#e08a00;
+    font-weight:900; font-size:clamp(32px,8vw,50px); cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.16); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; background:#ffe9a8; }
+  .choice.right { background:#b6f09c; color:#2d7a00; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#7a4a00; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#ffe9a8; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="prompt">What is the missing number?</h1>
+  <div id="seq"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const seqEl=document.getElementById('seq'), choicesEl=document.getElementById('choices'), promptEl=document.getElementById('prompt'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function newRound(){
+      locked=false;
+      const mode=KidsUtil.rand(['before','between','after']);
+      const n=2+Math.floor(Math.random()*17); // base so n-1..n+1 in range 1..20
+      let cells;
+      if(mode==='before'){ answer=n-1; cells=['?',n,n+1]; promptEl.textContent='What comes BEFORE?'; }
+      else if(mode==='after'){ answer=n+1; cells=[n-1,n,'?']; promptEl.textContent='What comes AFTER?'; }
+      else { answer=n; cells=[n-1,'?',n+1]; promptEl.textContent='What comes in BETWEEN?'; }
+      seqEl.innerHTML='';
+      cells.forEach(v=>{ const d=document.createElement('div'); d.className='cell'+(v==='?'?' blank':''); d.textContent=v; seqEl.appendChild(d); });
+      const opts=new Set([answer]); while(opts.size<3){ let d=answer+(Math.floor(Math.random()*5)-2); if(d>=1&&d<=21&&d!==answer) opts.add(d); }
+      choicesEl.innerHTML='';
+      KidsUtil.shuffle([...opts]).forEach(v=>{ const b=document.createElement('button'); b.className='choice'; b.textContent=v; b.onclick=()=>pick(v,b); choicesEl.appendChild(b); });
+      KidsAudio.speak(promptEl.textContent);
+    }
+    function pick(v,b){
+      if(locked) return; locked=true; try{KidsAudio.getAudio();}catch(e){}
+      if(v===answer){ b.classList.add('right'); [...seqEl.children].forEach(c=>{ if(c.classList.contains('blank')){ c.textContent=answer; c.classList.remove('blank'); } });
+        score++; scoreEl.textContent='⭐ '+score; KidsAudio.playChime('yay'); KidsAudio.speak('Yes! '+answer+'!'); confetti(); setTimeout(newRound,1800);
+      } else { b.classList.add('wrong'); locked=false; KidsAudio.playChime('uhoh'); KidsAudio.speak('Try again.'); setTimeout(()=>b.classList.remove('wrong'),450); }
+    }
+    function confetti(){ for(let i=0;i<20;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Big or Small?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #fa709a 0%, #fee140 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 18px 10px 8px;
+  }
+  #q {
+    background: rgba(255,255,255,0.9);
+    border-radius: 999px;
+    padding: 12px 30px;
+    font-size: clamp(20px, 3.5vw, 30px);
+    font-weight: 800;
+    color: #b34700;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    cursor: pointer;
+    user-select: none;
+    text-align: center;
+  }
+  #q .big   { font-size: 1.5em; color: #d63031; }
+  #q .small { font-size: 0.65em; color: #0984e3; }
+  #stars {
+    min-height: 34px;
+    font-size: 26px;
+    letter-spacing: 4px;
+    margin-top: 8px;
+    user-select: none;
+  }
+  #arena {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    min-height: 0;
+  }
+  .item {
+    cursor: pointer;
+    user-select: none;
+    line-height: 1;
+    transition: transform 0.15s;
+  }
+  .item:active { transform: scale(0.94); }
+  .item.size-big   { font-size: min(38vh, 44vw, 300px); }
+  .item.size-small { font-size: min(9vh, 12vw, 80px); }
+  .item.win  { animation: win 0.8s ease; }
+  @keyframes win {
+    0%,100% { transform: scale(1); }
+    30%     { transform: scale(1.25) rotate(-6deg); }
+    60%     { transform: scale(1.1)  rotate(5deg); }
+  }
+  .item.nope { animation: nope 0.5s ease; }
+  @keyframes nope {
+    0%,100% { transform: translateX(0); }
+    30%     { transform: translateX(-12px) rotate(-4deg); }
+    60%     { transform: translateX(12px)  rotate(4deg); }
+  }
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.7s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0);      opacity: 1; }
+    to   { transform: translateY(105vh) rotate(380deg); opacity: 0.8; }
+  }
+</style>
+</head>
+<body>
+  <h1>Big or Small? 🐘</h1>
+  <div id="q">Tap to start!</div>
+  <div id="stars"></div>
+  <div id="arena">
+    <div class="item" id="left"></div>
+    <div class="item" id="right"></div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const ITEMS = [
+      { e: '🐘', n: 'elephant' }, { e: '🐶', n: 'dog' },    { e: '🐱', n: 'cat' },
+      { e: '🚗', n: 'car' },      { e: '🍎', n: 'apple' },  { e: '⚽', n: 'ball' },
+      { e: '🦒', n: 'giraffe' },  { e: '🐠', n: 'fish' },   { e: '🌻', n: 'flower' },
+      { e: '🚂', n: 'train' },    { e: '🦋', n: 'butterfly' }, { e: '🐻', n: 'bear' },
+      { e: '🎈', n: 'balloon' },  { e: '🍌', n: 'banana' },
+    ];
+    const qEl = document.getElementById('q');
+    const starsEl = document.getElementById('stars');
+    const sides = [document.getElementById('left'), document.getElementById('right')];
+
+    let item = null, target = 'big', busy = false, score = 0, started = false;
+
+    function questionText() {
+      return target === 'big'
+        ? `Tap the <span class="big">BIG</span> ${item.n}!`
+        : `Tap the <span class="small">small</span> ${item.n}!`;
+    }
+    function speakQuestion() {
+      KidsAudio.speak(target === 'big' ? `Tap the BIG ${item.n}!` : `Tap the small ${item.n}!`);
+    }
+
+    function newRound() {
+      const prev = item;
+      do { item = KidsUtil.rand(ITEMS); } while (item === prev);
+      target = Math.random() < 0.5 ? 'big' : 'small';
+      const bigSide = Math.random() < 0.5 ? 0 : 1;
+      sides.forEach((el, i) => {
+        el.textContent = item.e;
+        el.className = 'item ' + (i === bigSide ? 'size-big' : 'size-small');
+        el.dataset.size = i === bigSide ? 'big' : 'small';
+      });
+      qEl.innerHTML = questionText();
+      speakQuestion();
+    }
+
+    sides.forEach(el => {
+      el.addEventListener('pointerdown', () => {
+        if (busy || !started) return;
+        if (el.dataset.size === target) {
+          busy = true;
+          el.classList.add('win');
+          KidsAudio.playChime('yay');
+          KidsAudio.speak(KidsUtil.rand(['Yes!', 'Hooray!', 'Great job!']) +
+            ` That's the ${target === 'big' ? 'BIG' : 'small'} ${item.n}!`);
+          score++;
+          starsEl.textContent = '⭐'.repeat(((score - 1) % 10) + 1);
+          if (score % 5 === 0) confettiBurst();
+          setTimeout(() => { busy = false; newRound(); }, 1900);
+        } else {
+          el.classList.add('nope');
+          KidsAudio.playChime('uhoh');
+          const other = target === 'big' ? 'small' : 'big';
+          KidsAudio.speak(`That's the ${other} ${item.n}. Find the ${target === 'big' ? 'BIG' : 'small'} one!`);
+          setTimeout(() => el.classList.remove('nope'), 600);
+        }
+      });
+    });
+
+    qEl.addEventListener('pointerdown', () => { if (started) speakQuestion(); });
+
+    function confettiBurst() {
+      for (let i = 0; i < 26; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(['🎉', '⭐', '💛', '✨', '🎈']);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2300);
+      }
+    }
+
+    window.addEventListener('pointerdown', function first() {
+      if (!started) { started = true; newRound(); }
+    }, { once: true });
+  </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Spelling Bee</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #f7b733 0%, #fc4a1a 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center;
+  }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a2c0c 0%, #3a1608 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(20px,4.6vw,32px); margin:0; padding:82px 16px 2px; text-shadow:2px 2px 0 rgba(0,0,0,.18); }
+  #pic { font-size:clamp(64px,18vw,120px); line-height:1; margin:4px 0; }
+  #blanks { display:flex; gap:clamp(6px,2vw,12px); margin:6px 0; }
+  .blank { width:clamp(40px,11vw,64px); height:clamp(48px,13vw,72px); border-radius:12px; background:rgba(255,255,255,.3);
+    border-bottom:5px solid #fff; display:flex; align-items:center; justify-content:center;
+    font-size:clamp(28px,7vw,46px); font-weight:900; color:#fff; }
+  .blank.full { background:#fff; color:#d84315; }
+  #bank { display:flex; flex-wrap:wrap; gap:clamp(8px,2.5vw,14px); justify-content:center; padding:10px 12px; max-width:96vw; }
+  .key { width:clamp(48px,12vw,68px); height:clamp(48px,12vw,68px); border:none; border-radius:14px; background:#fff;
+    color:#d84315; font-weight:900; font-size:clamp(26px,7vw,40px); cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit; }
+  .key:active { transform:translateY(3px); }
+  .key:disabled { opacity:.3; }
+  #ctrl { display:flex; gap:12px; margin-top:4px; }
+  .ctrl { border:none; border-radius:999px; padding:9px 18px; font-weight:800; font-size:15px; cursor:pointer; font-family:inherit;
+    background:rgba(255,255,255,.9); color:#d84315; }
+  #blanks.wrong { animation:shake .4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:28px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Spell the word!</h1>
+  <div id="pic"></div>
+  <div id="blanks"></div>
+  <div id="bank"></div>
+  <div id="ctrl">
+    <button class="ctrl" id="hear">🔊 Say it</button>
+    <button class="ctrl" id="back">⌫ Undo</button>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const WORDS=[
+      {w:'cat',e:'🐱'},{w:'fish',e:'🐟'},{w:'tree',e:'🌳'},{w:'star',e:'⭐'},{w:'moon',e:'🌙'},
+      {w:'book',e:'📖'},{w:'frog',e:'🐸'},{w:'cake',e:'🍰'},{w:'ball',e:'⚽'},{w:'hand',e:'✋'},
+      {w:'milk',e:'🥛'},{w:'leaf',e:'🍃'},
+    ];
+    const EXTRA='bcdfghlmnprstuw'.split('');
+    const picEl=document.getElementById('pic'), blanksEl=document.getElementById('blanks'), bankEl=document.getElementById('bank'), scoreEl=document.getElementById('score');
+    let cur, typed, score=0, locked=false;
+
+    function newRound(){
+      locked=false; typed=[];
+      cur=KidsUtil.rand(WORDS);
+      picEl.textContent=cur.e;
+      blanksEl.innerHTML=''; blanksEl.classList.remove('wrong');
+      cur.w.split('').forEach(()=>{ const b=document.createElement('div'); b.className='blank'; blanksEl.appendChild(b); });
+      let letters=cur.w.split('');
+      const need=Math.min(4, 8-letters.length);
+      const extras=KidsUtil.shuffle(EXTRA.filter(l=>!letters.includes(l))).slice(0,need);
+      bankEl.innerHTML='';
+      KidsUtil.shuffle(letters.concat(extras)).forEach(l=>{ const k=document.createElement('button'); k.className='key'; k.textContent=l; k.onclick=()=>tap(l,k); bankEl.appendChild(k); });
+      KidsAudio.speak('Spell ' + cur.w);
+    }
+
+    function tap(l,k){
+      if(locked||typed.length>=cur.w.length) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      typed.push({l,k}); k.disabled=true;
+      const b=blanksEl.children[typed.length-1]; b.textContent=l; b.classList.add('full');
+      if(typed.length===cur.w.length) check();
+    }
+
+    function undo(){
+      if(locked||!typed.length) return;
+      const last=typed.pop(); last.k.disabled=false;
+      const b=blanksEl.children[typed.length]; b.textContent=''; b.classList.remove('full');
+    }
+
+    function check(){
+      const word=typed.map(t=>t.l).join('');
+      if(word===cur.w){ locked=true; score++; scoreEl.textContent='⭐ '+score;
+        KidsAudio.playChime('yay'); KidsAudio.speak('Yes! ' + cur.w + '!'); confetti(); setTimeout(newRound,2000);
+      } else { blanksEl.classList.add('wrong'); KidsAudio.playChime('uhoh'); KidsAudio.speak('Not quite. Try again.');
+        setTimeout(()=>{ blanksEl.classList.remove('wrong'); while(typed.length) undo(); },650);
+      }
+    }
+
+    document.getElementById('hear').onclick=()=>{ try{KidsAudio.getAudio();}catch(e){} KidsAudio.speak(cur.w); };
+    document.getElementById('back').onclick=undo;
+    function confetti(){ for(let i=0;i<24;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

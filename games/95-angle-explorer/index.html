@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Angle Explorer</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #6190e8 0%, #a7bfe8 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #1a2a4e 0%, #2a3a56 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #deg { color:#fff; font-weight:900; font-size:clamp(20px,5.5vw,30px); min-height:36px; margin-bottom:6px; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #choices { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; padding:0 12px; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#3949ab; font-weight:900; cursor:pointer;
+    font-size:clamp(17px,4.6vw,24px); padding:14px 22px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>What kind of angle is this?</h1>
+  <svg id="svg" width="260" height="200" viewBox="0 0 260 200">
+    <path id="arc" fill="rgba(255,213,79,.5)" stroke="none"></path>
+    <line id="ray1" x1="60" y1="160" x2="240" y2="160" stroke="#fff" stroke-width="8" stroke-linecap="round"/>
+    <line id="ray2" x1="60" y1="160" x2="240" y2="160" stroke="#ffd54f" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="60" cy="160" r="8" fill="#fff"/>
+  </svg>
+  <div id="deg"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const ray2=document.getElementById('ray2'), arc=document.getElementById('arc'),
+      degEl=document.getElementById('deg'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    const KINDS=['Acute (less than 90°)','Right (exactly 90°)','Obtuse (more than 90°)'];
+    let angle, answer, score=0, locked=false;
+
+    function kindOf(a){ return a<90?0:(a===90?1:2); }
+    function draw(a){
+      const rad=a*Math.PI/180;
+      const x=60+180*Math.cos(rad), y=160-180*Math.sin(rad);
+      ray2.setAttribute('x2',x); ray2.setAttribute('y2',y);
+      const ax=60+46*Math.cos(rad), ay=160-46*Math.sin(rad);
+      const large=a>180?1:0;
+      arc.setAttribute('d','M 106 160 A 46 46 0 '+large+' 0 '+ax+' '+ay+' L 60 160 Z');
+    }
+    function newRound(){
+      locked=false; choicesEl.innerHTML=''; degEl.textContent='';
+      const kind=Math.floor(Math.random()*3);
+      if(kind===0) angle=15+Math.floor(Math.random()*66);       // 15..80
+      else if(kind===1) angle=90;
+      else angle=100+Math.floor(Math.random()*66);              // 100..165
+      answer=kindOf(angle);
+      draw(angle);
+      KINDS.forEach((k,i)=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=k;
+        b.onclick=()=>pick(i,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('Look at the yellow angle. Is it acute, right, or obtuse?');
+    }
+    function pick(i,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(i===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); degEl.textContent='It was '+angle+'°!';
+        KidsAudio.playChime('yay');
+        const names=['acute — smaller than 90 degrees','a right angle — exactly 90 degrees','obtuse — bigger than 90 degrees'];
+        KidsAudio.speak('Yes! This angle is '+angle+' degrees. It is '+names[i]+'!');
+        confetti(); setTimeout(newRound,2700);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Compare it with a square corner — 90 degrees. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

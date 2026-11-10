@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Hindi Ginti</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#fff3b0,#ffb347); --av-ink: #7a3b00; }
+  .dots { font-size:clamp(22px,6vmin,36px); max-width:min(90vw,420px); line-height:1.25; }
+  .roman { opacity:.75; font-size:.7em; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: Hindi number names and numerals, एक to दस.
+    const K = KidsKit;
+    const N = [['१','एक','ek'],['२','दो','do'],['३','तीन','teen'],['४','चार','chaar'],['५','पाँच','paanch'],
+      ['६','छह','chhah'],['७','सात','saat'],['८','आठ','aath'],['९','नौ','nau'],['१०','दस','dus']]
+      .map((a, i) => ({ num: a[0], word: a[1], roman: a[2], n: i + 1 }));
+    const hi = (text, roman) => ({ text, roman, hindi: true });
+    K.flashQuiz({
+      title: 'हिंदी गिनती · Hindi numbers',
+      items: N,
+      card: it => '<div class="av-big">' + it.num + '</div><div class="av-word">' + it.word + ' <span class="roman">' + it.roman + ' · ' + it.n + '</span></div>'
+        + '<div class="dots">' + '🍎'.repeat(it.n) + '</div>',
+      say: it => hi(it.word, it.roman),
+      ask: it => ({ show: '<div class="dots">' + '🍎'.repeat(it.n) + '</div><div class="av-word">' + it.word + ' <span class="roman">' + it.roman + '</span></div><div class="av-sub">🔊 tap to hear again</div>',
+        say: hi(it.word + ' कहाँ है?', 'Where is ' + it.roman + '?') }),
+      choice: it => K.card(it.num, it.n),
+      praise: it => hi('शाबाश! ' + it.word + '!', 'Shabaash! ' + it.roman + '!'),
+    });
+  </script>
+</body>
+</html>

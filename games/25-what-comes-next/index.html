@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>What Comes Next?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #43cea2 0%, #2a8ec9 55%, #185a9d 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  html[data-theme="dark"] body {
+    background: linear-gradient(180deg, #0c2a22 0%, #0e2436 55%, #0a1a2e 100%);
+  }
+  h1 {
+    color: #fff;
+    text-align: center;
+    font-size: clamp(24px, 5.6vw, 44px);
+    font-weight: 900;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.18);
+    margin: 0;
+    padding: 86px 16px 0;
+  }
+  #pattern {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(6px, 1.8vw, 14px);
+    padding: 10px;
+    min-height: 0;
+    flex-wrap: nowrap;
+  }
+  .item {
+    width: clamp(40px, 11vw, 84px);
+    height: clamp(40px, 11vw, 84px);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(28px, 7.5vw, 58px);
+    line-height: 1;
+    flex: none;
+  }
+  .item.swatch { border-radius: 50%; box-shadow: inset -4px -5px 8px rgba(0,0,0,0.15); }
+  .slot {
+    width: clamp(40px, 11vw, 84px);
+    height: clamp(40px, 11vw, 84px);
+    border-radius: 18px;
+    border: 4px dashed rgba(255,255,255,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(30px, 8vw, 60px);
+    font-weight: 900;
+    color: rgba(255,255,255,0.9);
+    flex: none;
+  }
+  .slot.filled { border-style: solid; border-color: transparent; }
+  #choicesWrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 10px 0 6px;
+  }
+  #choices {
+    display: flex;
+    gap: clamp(14px, 4vw, 34px);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .choice {
+    width: clamp(66px, 17vw, 116px);
+    height: clamp(66px, 17vw, 116px);
+    border-radius: 24px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(44px, 12vw, 82px);
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.18);
+    transition: transform 0.08s;
+  }
+  .choice.swatch { border-radius: 50%; box-shadow: 0 8px 0 rgba(0,0,0,0.18), inset -5px -6px 10px rgba(0,0,0,0.15); }
+  .choice:active { transform: translateY(3px); }
+  .choice.wrong { animation: shake 0.4s; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25%     { transform: translateX(-12px); }
+    75%     { transform: translateX(12px); }
+  }
+  .pop { animation: pop-in 0.4s cubic-bezier(0.2,1.5,0.4,1); }
+  @keyframes pop-in {
+    0%   { transform: scale(0.2); opacity: 0; }
+    60%  { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  #hint {
+    color: #fff;
+    font-weight: 700;
+    font-size: clamp(13px, 3vw, 18px);
+    opacity: 0.85;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+    padding: 0 0 16px;
+    text-align: center;
+  }
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.7s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0);      opacity: 1; }
+    to   { transform: translateY(105vh) rotate(380deg); opacity: 0.85; }
+  }
+</style>
+</head>
+<body>
+  <h1>What comes next?</h1>
+  <div id="pattern"></div>
+  <div id="choicesWrap"><div id="choices"></div></div>
+  <div id="hint">Tap what comes next!</div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const COLORS = [
+      { css: '#ff5757', name: 'Red' },
+      { css: '#3a86ff', name: 'Blue' },
+      { css: '#ffd23f', name: 'Yellow' },
+      { css: '#2ec4b6', name: 'Green' },
+      { css: '#8338ec', name: 'Purple' },
+    ];
+    const THEMES = [
+      ['🍎','🍌','🍊'],
+      ['🐶','🐱'],
+      ['⭐','🌙'],
+      ['🚗','🚌'],
+      ['🐠','🐢'],
+    ];
+
+    const patternEl = document.getElementById('pattern');
+    const choicesEl = document.getElementById('choices');
+    let answer = null;
+    let slotEl = null;
+    let locked = false;
+
+    function itemNode(item, cls) {
+      const d = document.createElement('div');
+      d.className = cls;
+      if (typeof item === 'string') { d.textContent = item; }
+      else { d.classList.add('swatch'); d.style.background = item.css; }
+      return d;
+    }
+
+    function newRound() {
+      locked = false;
+      patternEl.innerHTML = '';
+      choicesEl.innerHTML = '';
+
+      const useColors = Math.random() < 0.6;
+      const pool = useColors ? COLORS : KidsUtil.rand(THEMES);
+      const maxUnit = Math.min(3, pool.length);
+      let unitLen = (maxUnit >= 3 && Math.random() < 0.4) ? 3 : 2;
+      const unit = KidsUtil.shuffle(pool).slice(0, unitLen);
+      const k = unitLen === 2 ? (Math.random() < 0.5 ? 4 : 5) : 5;
+      answer = unit[k % unitLen];
+
+      // Shown sequence, then the dashed "?" slot.
+      for (let i = 0; i < k; i++) patternEl.appendChild(itemNode(unit[i % unitLen], 'item'));
+      slotEl = document.createElement('div');
+      slotEl.className = 'slot';
+      slotEl.textContent = '?';
+      patternEl.appendChild(slotEl);
+
+      // Choices: the pattern's items, plus one extra if there's room.
+      let choices = unit.slice();
+      if (choices.length < 3) {
+        const extras = pool.filter(p => !unit.includes(p));
+        if (extras.length) choices.push(KidsUtil.rand(extras));
+      }
+      KidsUtil.shuffle(choices).forEach(item => {
+        const c = itemNode(item, 'choice');
+        c.addEventListener('pointerdown', () => choose(item, c));
+        choicesEl.appendChild(c);
+      });
+
+      KidsAudio.speak('What comes next?');
+    }
+
+    function choose(item, c) {
+      if (locked) return;
+      try { KidsAudio.getAudio(); } catch (e) {}
+      if (item === answer) {
+        locked = true;
+        slotEl.textContent = '';
+        slotEl.classList.add('filled');
+        const fill = itemNode(item, 'item');
+        fill.classList.add('pop');
+        slotEl.appendChild(fill);
+        KidsAudio.playChime('yay');
+        KidsAudio.speak(typeof item === 'string' ? 'Yes! Well done!' : `Yes! ${item.name}!`);
+        confettiBurst();
+        setTimeout(newRound, 1900);
+      } else {
+        c.classList.add('wrong');
+        KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Try again.');
+        setTimeout(() => c.classList.remove('wrong'), 450);
+      }
+    }
+
+    function confettiBurst() {
+      for (let i = 0; i < 26; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(['🎉','⭐','🎈','✨','🌈']);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2300);
+      }
+    }
+
+    newRound();
+  </script>
+</body>
+</html>

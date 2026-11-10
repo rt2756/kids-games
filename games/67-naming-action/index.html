@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Naming &amp; Action Words</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #43e97b 0%, #38f9d7 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0e3a22 0%, #0c3a34 100%); }
+  h1 { color:#0b5b3a; font-weight:900; font-size:clamp(17px,4.4vw,26px); margin:0; position:fixed; top:94px; left:0; right:0; text-align:center; padding:0 16px; }
+  html[data-theme="dark"] h1 { color:#bff5dd; }
+  #word { background:#fff; color:#0b7a52; font-weight:900; font-size:clamp(40px,12vw,76px); padding:18px 40px; border-radius:22px;
+    box-shadow:0 10px 0 rgba(0,0,0,.16); margin:8px 0 16px; }
+  #choices { display:flex; gap:clamp(12px,5vw,30px); }
+  .choice { display:flex; flex-direction:column; align-items:center; gap:6px; width:clamp(130px,38vw,190px); padding:18px 10px;
+    border:none; border-radius:20px; background:#fff; cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.16); transition:transform .08s; font-family:inherit; }
+  .choice .ce { font-size:clamp(40px,11vw,60px); }
+  .choice .cl { font-weight:900; color:#0b7a52; font-size:clamp(16px,4.2vw,22px); }
+  .choice .cs { color:#5a8a76; font-size:clamp(11px,2.8vw,14px); font-weight:700; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#0b5b3a; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#bff5dd; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Is it a naming word or an action word?</h1>
+  <div id="word"></div>
+  <div id="choices">
+    <button class="choice" data-t="noun"><span class="ce">🧸</span><span class="cl">Naming</span><span class="cs">a person, animal or thing</span></button>
+    <button class="choice" data-t="verb"><span class="ce">🏃</span><span class="cl">Action</span><span class="cs">something we do</span></button>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const NOUNS=['dog','cat','ball','apple','girl','book','sun','tree','car','bird','cup','fish'];
+    const VERBS=['run','jump','eat','sing','swim','read','dance','sleep','hop','clap','jump','draw'];
+    const wordEl=document.getElementById('word'), scoreEl=document.getElementById('score');
+    let curType, score=0, locked=false;
+    function newRound(){
+      locked=false;
+      const noun=Math.random()<0.5;
+      curType = noun ? 'noun' : 'verb';
+      wordEl.textContent = noun ? KidsUtil.rand(NOUNS) : KidsUtil.rand(VERBS);
+      document.querySelectorAll('.choice').forEach(b=>b.className='choice');
+      KidsAudio.speak(wordEl.textContent);
+    }
+    document.querySelectorAll('.choice').forEach(b=>{
+      b.onclick=()=>{
+        if(locked) return; try{KidsAudio.getAudio();}catch(e){}
+        if(b.dataset.t===curType){ locked=true; b.classList.add('right'); score++; scoreEl.textContent='⭐ '+score;
+          KidsAudio.playChime('yay'); KidsAudio.speak('Yes! "'+wordEl.textContent+'" is a '+(curType==='noun'?'naming':'action')+' word!'); confetti(); setTimeout(newRound,1900);
+        } else { b.classList.add('wrong'); KidsAudio.playChime('uhoh'); KidsAudio.speak('Try again.'); setTimeout(()=>b.classList.remove('wrong'),450); }
+      };
+    });
+    function confetti(){ for(let i=0;i<20;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Fraction Pizza</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #ff9a44 0%, #ff5e62 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center;
+  }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a2410 0%, #3a161a 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(20px,4.6vw,32px); margin:0; padding:84px 16px 2px; text-shadow:2px 2px 0 rgba(0,0,0,.18); }
+  #target { color:#fff; font-weight:900; font-size:clamp(40px,11vw,68px); margin:2px 0; text-shadow:2px 2px 0 rgba(0,0,0,.2); }
+  svg { width:min(70vw,300px); height:min(70vw,300px); margin:2px 0; }
+  .slice { stroke:#7a3b00; stroke-width:2; cursor:pointer; }
+  .crust { fill:none; stroke:#c97b30; stroke-width:8; }
+  #done { color:#fff; font-weight:800; font-size:clamp(14px,3.4vw,20px); min-height:24px; }
+  #check { border:none; background:#fff; color:#e8590c; font-weight:900; font-size:clamp(16px,4vw,22px);
+    padding:12px 26px; border-radius:999px; cursor:pointer; box-shadow:0 6px 0 #ad3e00; margin:6px 0 16px; }
+  #check:active { transform:translateY(3px); box-shadow:0 3px 0 #ad3e00; }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:28px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Shade the fraction!</h1>
+  <div id="target"></div>
+  <svg id="pizza" viewBox="0 0 200 200"></svg>
+  <div id="done">Tap slices, then check</div>
+  <button id="check">✓ Check</button>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const SVGNS='http://www.w3.org/2000/svg';
+    const pizza=document.getElementById('pizza'), targetEl=document.getElementById('target'),
+      doneEl=document.getElementById('done'), scoreEl=document.getElementById('score');
+    let d, n, shaded, score=0, locked=false;
+    const CHEESE='#ffd95e', TOP='#e63946';
+
+    function poly(a){ const r=(a-90)*Math.PI/180; return [100+90*Math.cos(r),100+90*Math.sin(r)]; }
+    function slicePath(i){ const step=360/d; const a0=i*step, a1=(i+1)*step; const [x0,y0]=poly(a0),[x1,y1]=poly(a1);
+      const large=step>180?1:0; return `M100,100 L${x0.toFixed(1)},${y0.toFixed(1)} A90,90 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z`; }
+
+    function newRound(){
+      locked=false; doneEl.textContent='Tap slices, then check';
+      d=KidsUtil.rand([2,3,4,6]); n=1+Math.floor(Math.random()*(d-1));
+      shaded=new Array(d).fill(false);
+      targetEl.textContent=`Make ${n}/${d}`;
+      pizza.innerHTML='';
+      for(let i=0;i<d;i++){ const p=document.createElementNS(SVGNS,'path'); p.setAttribute('class','slice'); p.setAttribute('d',slicePath(i)); p.setAttribute('fill',CHEESE);
+        p.addEventListener('click',()=>toggle(i,p)); pizza.appendChild(p); }
+      const ring=document.createElementNS(SVGNS,'circle'); ring.setAttribute('class','crust'); ring.setAttribute('cx',100); ring.setAttribute('cy',100); ring.setAttribute('r',90); pizza.appendChild(ring);
+      KidsAudio.speak(`Make ${n} out of ${d}.`);
+    }
+
+    function toggle(i,p){
+      if(locked) return; try{KidsAudio.getAudio();}catch(e){}
+      shaded[i]=!shaded[i]; p.setAttribute('fill',shaded[i]?TOP:CHEESE); KidsAudio.playPop();
+    }
+
+    function check(){
+      if(locked) return;
+      const count=shaded.filter(Boolean).length;
+      if(count===n){ locked=true; score++; scoreEl.textContent='⭐ '+score; doneEl.textContent=`${n}/${d} — perfect!`;
+        KidsAudio.playChime('yay'); KidsAudio.speak(`Yes! ${n} out of ${d}!`); confetti(); setTimeout(newRound,2100);
+      } else { doneEl.textContent=`You shaded ${count}. Need ${n}.`; KidsAudio.playChime('uhoh');
+        KidsAudio.speak(count<n?'Shade more slices.':'Shade fewer slices.'); }
+    }
+
+    document.getElementById('check').onclick=check;
+    function confetti(){ for(let i=0;i<24;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🍕','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

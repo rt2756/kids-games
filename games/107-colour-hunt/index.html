@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Colour Hunt</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#fdfbfb,#ebedee); --av-ink: #333; }
+  .blob { width:clamp(90px,24vmin,150px); height:clamp(90px,24vmin,150px); border-radius:46% 54% 50% 50% / 55% 45% 55% 45%;
+    border:5px solid rgba(0,0,0,.12); box-shadow:0 8px 18px rgba(0,0,0,.18); }
+  .cname { text-transform:uppercase; letter-spacing:3px; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: colour recognition in real things (not just colour swatches).
+    const K = KidsKit, U = KidsUtil;
+    const COLOURS = {
+      red:    { hex: '#e53935', things: [['apple','🍎'],['strawberry','🍓'],['fire engine','🚒'],['rose','🌹'],['tomato','🍅']], near: ['pink','orange'] },
+      yellow: { hex: '#fdd835', things: [['banana','🍌'],['sunflower','🌻'],['chick','🐥'],['lemon','🍋'],['star','⭐']], near: ['orange'] },
+      green:  { hex: '#43a047', things: [['frog','🐸'],['broccoli','🥦'],['tree','🌳'],['cucumber','🥒'],['clover','🍀']], near: [] },
+      blue:   { hex: '#1e88e5', things: [['whale','🐳'],['bunch of blueberries','🫐'],['cap','🧢'],['water drop','💧'],['pair of jeans','👖']], near: ['purple'] },
+      orange: { hex: '#fb8c00', things: [['orange','🍊'],['carrot','🥕'],['pumpkin','🎃'],['fox','🦊'],['basketball','🏀']], near: ['yellow','red','brown'] },
+      purple: { hex: '#8e24aa', things: [['bunch of grapes','🍇'],['brinjal','🍆'],['purple heart','💜']], near: ['blue','pink'] },
+      pink:   { hex: '#f48fb1', things: [['pig','🐷'],['blossom','🌸'],['flamingo','🦩'],['ribbon','🎀']], near: ['red','purple'] },
+      brown:  { hex: '#795548', things: [['bear','🐻'],['chocolate','🍫'],['monkey','🐵'],['log','🪵']], near: ['orange'] },
+      white:  { hex: '#ffffff', things: [['cloud','☁️'],['milk','🥛'],['sheep','🐑'],['snowman','⛄'],['tooth','🦷']], near: [] },
+    };
+    const draw = K.bag(Object.keys(COLOURS));
+    K.quiz({ next(round) {
+      const c = draw(), C = COLOURS[c];
+      const thing = U.rand(C.things);
+      // Distractors come from clearly different colours (never red vs pink).
+      const others = U.shuffle(Object.keys(COLOURS).filter(k => k !== c && !C.near.includes(k))).slice(0, round < 4 ? 2 : 3)
+        .map(k => ({ colour: k, thing: U.rand(COLOURS[k].things) }));
+      return {
+        title: 'Find something <span style="background:' + C.hex + ';color:' + (c === 'white' || c === 'yellow' ? '#333' : '#fff') + ';padding:0 12px;border-radius:12px">' + c + '</span>',
+        show: '<div class="blob" style="background:' + C.hex + '"></div><div class="av-word cname">' + c + '</div>',
+        say: 'Find something ' + c + '!',
+        choices: U.shuffle([{ colour: c, thing }].concat(others)).map(o => ({ html: K.card(o.thing[1]), ok: o.colour === c,
+          say: 'The ' + o.thing[0] + ' is ' + o.colour + '. Find something ' + c + '.' })),
+        praise: 'Yes! The ' + thing[0] + ' is ' + c + '!',
+      };
+    } });
+  </script>
+</body>
+</html>

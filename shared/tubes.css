@@ -1,0 +1,38 @@
+/* Styles for /shared/tubes.js. Every size hangs off --s (one piece, in px),
+   which tubes.js works out from the real space on screen — so the same
+   board fills a phone, a tablet or a desktop window. */
+.tb-board { flex: 1; min-height: 0; align-self: stretch; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: calc(var(--s, 40px) * .35); }
+.tb-row { display: flex; justify-content: center; gap: calc(var(--s) * .38); }
+.tb-tube { position: relative; border: none; background: none; margin: 0; padding: calc(var(--s) * 1.1) 0 0;
+  cursor: pointer; font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+.tb-glass { box-sizing: content-box; width: calc(var(--s) * 1.14); height: calc(var(--s) * var(--cap) + var(--s) * .1);
+  padding-bottom: calc(var(--s) * .07); border: 3px solid rgba(255,255,255,.92); border-top: none;
+  border-radius: 0 0 calc(var(--s) * .62) calc(var(--s) * .62); background: rgba(255,255,255,.2);
+  display: flex; flex-direction: column-reverse; align-items: center; transition: transform .15s, box-shadow .2s; }
+
+.tb-ball { flex: none; width: var(--s); height: var(--s); border-radius: 50%; transition: transform .16s ease-out;
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.9) 0 8%, rgba(255,255,255,0) 24%), var(--c);
+  box-shadow: inset calc(var(--s) * -.1) calc(var(--s) * -.12) calc(var(--s) * .16) rgba(0,0,0,.28); }
+
+/* Water: flat layers, and the whole tube lifts when picked. */
+.tb-board.water .tb-glass { overflow: hidden; padding-bottom: 0; width: var(--s); }
+.tb-water { flex: none; width: 100%; height: var(--s); background: var(--c);
+  box-shadow: inset calc(var(--s) * .16) 0 0 rgba(255,255,255,.22); }
+.tb-board.water .tb-tube.sel .tb-glass { transform: translateY(calc(var(--s) * -.7)); }
+
+/* Rings: a peg on a base instead of a glass. */
+.tb-board.rings .tb-glass { width: calc(var(--s) * 4); height: calc(var(--s) * var(--cap)); padding: 0; border: none;
+  border-bottom: calc(var(--s) * .22) solid #8b5a2b; border-radius: 0 0 6px 6px;
+  background: linear-gradient(#c9a26b, #c9a26b) center bottom / calc(var(--s) * .2) 100% no-repeat; }
+.tb-ring { flex: none; box-sizing: border-box; height: calc(var(--s) * .9); margin-top: calc(var(--s) * .1);
+  border-radius: 999px; background: var(--c); transition: transform .16s ease-out;
+  box-shadow: inset 0 calc(var(--s) * -.14) 0 rgba(0,0,0,.22), inset 0 calc(var(--s) * .1) 0 rgba(255,255,255,.3); }
+.tb-flag { height: var(--s); font-size: calc(var(--s) * .7); line-height: var(--s); text-align: center; }
+
+.tb-tube.ok .tb-glass { box-shadow: 0 0 0 4px rgba(255,255,255,.55); }
+.tb-tube.hint .tb-glass { box-shadow: 0 0 0 5px #ffd93b; animation: av-pulse .8s ease-in-out infinite; }
+.tb-tube.wrong .tb-glass { animation: av-shake .35s; }
+.tb-tube.done::before { content: '⭐'; position: absolute; left: 0; right: 0; top: calc(var(--s) * .2);
+  font-size: calc(var(--s) * .6); line-height: 1; text-align: center; }
+

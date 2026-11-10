@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Our Helpers</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #00cdac 0%, #02aab0 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #053a33 0%, #043336 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.6vw,28px); margin:0; position:fixed; top:92px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #q { color:#fff; font-weight:800; font-size:clamp(20px,5.2vw,30px); margin:6px 16px; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #choices { display:flex; gap:clamp(12px,4vw,26px); flex-wrap:wrap; justify-content:center; padding:8px 10px; }
+  .choice { display:flex; flex-direction:column; align-items:center; gap:4px; width:clamp(100px,26vw,150px); padding:14px 6px;
+    border-radius:22px; background:#fff; cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.16); transition:transform .08s; }
+  .choice .ce { font-size:clamp(50px,13vw,84px); line-height:1; }
+  .choice .cl { font-weight:900; color:#03968f; font-size:clamp(14px,3.6vw,19px); }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Who helps us?</h1>
+  <div id="q"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const HELPERS=[
+      { e:'👩‍⚕️', n:'doctor',      q:'Who helps us when we are sick?' },
+      { e:'👩‍🏫', n:'teacher',     q:'Who teaches us at school?' },
+      { e:'👨‍🌾', n:'farmer',      q:'Who grows our food?' },
+      { e:'👮',   n:'police',      q:'Who keeps us safe?' },
+      { e:'👨‍🚒', n:'firefighter', q:'Who puts out fires?' },
+      { e:'👨‍🍳', n:'cook',        q:'Who cooks food for us?' },
+    ];
+    const qEl=document.getElementById('q'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let cur, score=0, locked=false;
+    function newRound(){
+      locked=false; cur=KidsUtil.rand(HELPERS);
+      qEl.textContent=cur.q;
+      const others=KidsUtil.shuffle(HELPERS.filter(h=>h.n!==cur.n)).slice(0,2);
+      choicesEl.innerHTML='';
+      KidsUtil.shuffle([cur,...others]).forEach(h=>{ const c=document.createElement('div'); c.className='choice';
+        c.innerHTML='<span class="ce">'+h.e+'</span><span class="cl">'+h.n+'</span>'; c.onclick=()=>pick(h,c); choicesEl.appendChild(c); });
+      KidsAudio.speak(cur.q);
+    }
+    function pick(h,c){
+      if(locked) return; locked=true; try{KidsAudio.getAudio();}catch(e){}
+      if(h.n===cur.n){ c.classList.add('right'); score++; scoreEl.textContent='⭐ '+score; KidsAudio.playChime('yay'); KidsAudio.speak('Yes! The '+cur.n+'!'); confetti(); setTimeout(newRound,1900);
+      } else { c.classList.add('wrong'); locked=false; KidsAudio.playChime('uhoh'); KidsAudio.speak('Try again.'); setTimeout(()=>c.classList.remove('wrong'),450); }
+    }
+    function confetti(){ for(let i=0;i<20;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

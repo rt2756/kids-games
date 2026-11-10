@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Day &amp; Night</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { height: 100vh; width: 100vw; overflow: hidden; }
+
+  .sky {
+    position: fixed;
+    inset: 0;
+    transition: opacity 1.6s ease;
+  }
+  #day-sky   { background: linear-gradient(180deg, #6ec6f5 0%, #cdeffd 100%); opacity: 1; }
+  #night-sky { background: linear-gradient(180deg, #0b1d4f 0%, #27407c 100%); opacity: 0; }
+  body.night #day-sky   { opacity: 0; }
+  body.night #night-sky { opacity: 1; }
+
+  h1 {
+    position: relative;
+    text-align: center;
+    color: white;
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.25);
+    margin: 16px 0 0;
+    z-index: 5;
+  }
+
+  #sun, #moon {
+    position: fixed;
+    top: 7vh;
+    right: 10vw;
+    font-size: clamp(70px, 12vw, 110px);
+    line-height: 1;
+    user-select: none;
+    transition: transform 1.8s ease, opacity 1.4s ease;
+    z-index: 2;
+  }
+  #moon { transform: translateY(85vh); opacity: 0; }
+  body.night #sun  { transform: translateY(85vh); opacity: 0; }
+  body.night #moon { transform: translateY(0);    opacity: 1; }
+
+  .star {
+    position: fixed;
+    color: #fff8c4;
+    font-size: 18px;
+    opacity: 0;
+    transition: opacity 1.6s ease;
+    cursor: pointer;
+    user-select: none;
+    z-index: 3;
+    animation: twinkle 2.2s ease-in-out infinite;
+  }
+  body.night .star { opacity: 1; }
+  @keyframes twinkle {
+    0%,100% { transform: scale(1);    filter: brightness(1); }
+    50%     { transform: scale(1.35); filter: brightness(1.6); }
+  }
+
+  #ground {
+    position: fixed;
+    bottom: 0;
+    width: 100vw;
+    height: 30vh;
+    background: linear-gradient(180deg, #7ec850, #4e9b2e);
+    transition: filter 1.6s ease;
+    z-index: 4;
+  }
+  body.night #ground { filter: brightness(0.45) saturate(0.7); }
+
+  .deco {
+    position: fixed;
+    z-index: 5;
+    user-select: none;
+    line-height: 1;
+    transition: filter 1.6s ease, opacity 1.6s ease;
+  }
+  body.night .deco { filter: brightness(0.55); }
+  .flower { font-size: clamp(28px, 5vw, 44px); }
+  body.night .flower { opacity: 0.25; }
+
+  .animal {
+    position: fixed;
+    z-index: 6;
+    font-size: clamp(54px, 10vw, 90px);
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    transition: filter 1.6s ease, transform 0.15s;
+  }
+  .animal:active { transform: scale(0.92); }
+  body.night .animal { filter: brightness(0.5); }
+
+  .zzz {
+    position: fixed;
+    z-index: 7;
+    font-size: 30px;
+    pointer-events: none;
+    animation: zfloat 2.4s ease-out forwards;
+  }
+  @keyframes zfloat {
+    from { transform: translateY(0)     scale(0.6); opacity: 1; }
+    to   { transform: translateY(-110px) scale(1.3); opacity: 0; }
+  }
+  .sparkle {
+    position: fixed;
+    font-size: 26px;
+    pointer-events: none;
+    z-index: 20;
+    animation: spark 0.9s ease-out forwards;
+  }
+  @keyframes spark {
+    from { transform: scale(0.4); opacity: 1; }
+    to   { transform: scale(1.8); opacity: 0; }
+  }
+
+  #switch {
+    position: fixed;
+    bottom: 26px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 190px;
+    height: 84px;
+    background: rgba(255,255,255,0.92);
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    font-size: 44px;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.35);
+    z-index: 10;
+  }
+  #knob {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd200, #f7971e);
+    transition: transform 0.5s cubic-bezier(0.5, 1.6, 0.4, 1), background 0.5s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  body.night #knob {
+    transform: translateX(106px);
+    background: linear-gradient(135deg, #5b6bd6, #2c3e8c);
+  }
+</style>
+</head>
+<body>
+  <div class="sky" id="day-sky"></div>
+  <div class="sky" id="night-sky"></div>
+  <h1 id="title">Good morning! ☀️</h1>
+  <div id="sun">☀️</div>
+  <div id="moon">🌙</div>
+
+  <div id="ground"></div>
+  <div class="deco" style="left: 4vw;  bottom: 24vh; font-size: clamp(80px, 16vw, 150px);">🏠</div>
+  <div class="deco" style="right: 4vw; bottom: 24vh; font-size: clamp(70px, 14vw, 130px);">🌳</div>
+  <div class="deco flower" style="left: 30vw; bottom: 4vh;">🌻</div>
+  <div class="deco flower" style="left: 38vw; bottom: 7vh;">🌷</div>
+  <div class="deco flower" style="right: 30vw; bottom: 5vh;">🌼</div>
+
+  <div class="animal" data-n="cow"     style="left: 12vw; bottom: 13vh;">🐮</div>
+  <div class="animal" data-n="dog"     style="left: 34vw; bottom: 16vh;">🐶</div>
+  <div class="animal" data-n="sheep"   style="right: 32vw; bottom: 12vh;">🐑</div>
+  <div class="animal" data-n="rooster" style="right: 12vw; bottom: 16vh;">🐓</div>
+
+  <div id="switch"><span>☀️</span><div id="knob"></div><span>🌙</span></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const body = document.body;
+    const title = document.getElementById('title');
+    let night = false;
+    let started = false;        // ambient sounds wait for the first tap
+    const timers = [];
+
+    // ---- stars ----
+    for (let i = 0; i < 36; i++) {
+      const s = document.createElement('div');
+      s.className = 'star';
+      s.textContent = Math.random() < 0.3 ? '✦' : '⭐';
+      s.style.left = Math.random() * 96 + 'vw';
+      s.style.top  = Math.random() * 55 + 'vh';
+      s.style.animationDelay = (Math.random() * 2) + 's';
+      s.style.fontSize = (12 + Math.random() * 14) + 'px';
+      s.addEventListener('pointerdown', (e) => {
+        if (!night) return;
+        ding();
+        const sp = document.createElement('div');
+        sp.className = 'sparkle';
+        sp.textContent = '✨';
+        sp.style.left = e.clientX - 13 + 'px';
+        sp.style.top  = e.clientY - 13 + 'px';
+        document.body.appendChild(sp);
+        setTimeout(() => sp.remove(), 950);
+      });
+      document.body.appendChild(s);
+    }
+
+    // ---- little synth ambients ----
+    const ac = () => KidsAudio.getAudio();
+    function ding() {
+      const a = ac(), n = a.currentTime;
+      const o = a.createOscillator(), g = a.createGain();
+      o.frequency.value = 1760;
+      g.gain.setValueAtTime(0.0001, n);
+      g.gain.exponentialRampToValueAtTime(0.2, n + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, n + 0.5);
+      o.connect(g).connect(a.destination);
+      o.start(n); o.stop(n + 0.55);
+    }
+    function birdChirp() {
+      const a = ac(), n = a.currentTime;
+      for (let i = 0; i < 2; i++) {
+        const o = a.createOscillator(), g = a.createGain();
+        const t = n + i * 0.18;
+        o.frequency.setValueAtTime(2300, t);
+        o.frequency.exponentialRampToValueAtTime(3200, t + 0.09);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.12, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+        o.connect(g).connect(a.destination);
+        o.start(t); o.stop(t + 0.14);
+      }
+    }
+    function cricket() {
+      const a = ac(), n = a.currentTime;
+      for (let i = 0; i < 3; i++) {
+        const o = a.createOscillator(), g = a.createGain();
+        o.type = 'square';
+        o.frequency.value = 4300;
+        const t = n + i * 0.09;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.035, t + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+        o.connect(g).connect(a.destination);
+        o.start(t); o.stop(t + 0.06);
+      }
+    }
+    function snore() {
+      const a = ac(), n = a.currentTime;
+      const o = a.createOscillator(), g = a.createGain();
+      o.frequency.setValueAtTime(85, n);
+      o.frequency.linearRampToValueAtTime(70, n + 0.55);
+      g.gain.setValueAtTime(0.0001, n);
+      g.gain.exponentialRampToValueAtTime(0.16, n + 0.18);
+      g.gain.exponentialRampToValueAtTime(0.0001, n + 0.6);
+      o.connect(g).connect(a.destination);
+      o.start(n); o.stop(n + 0.65);
+    }
+
+    function spawnZzz(el) {
+      const r = el.getBoundingClientRect();
+      const z = document.createElement('div');
+      z.className = 'zzz';
+      z.textContent = '💤';
+      z.style.left = (r.left + r.width * 0.6) + 'px';
+      z.style.top  = (r.top - 8) + 'px';
+      document.body.appendChild(z);
+      setTimeout(() => z.remove(), 2500);
+    }
+
+    const animals = [...document.querySelectorAll('.animal')];
+
+    // ---- ambient timers ----
+    function clearTimers() { timers.forEach(clearInterval); timers.length = 0; }
+    function startDayAmbience() {
+      clearTimers();
+      timers.push(setInterval(() => birdChirp(), 4500));
+    }
+    function startNightAmbience() {
+      clearTimers();
+      timers.push(setInterval(() => cricket(), 3200));
+      timers.push(setInterval(() => snore(), 4600));
+      timers.push(setInterval(() => spawnZzz(KidsUtil.rand(animals)), 2300));
+    }
+
+    // ---- toggle ----
+    function setNight(v) {
+      night = v;
+      body.classList.toggle('night', night);
+      if (night) {
+        title.textContent = 'Good night! 🌙';
+        KidsAudio.speak('Good night! Shhh... everybody is sleeping.');
+        startNightAmbience();
+      } else {
+        title.textContent = 'Good morning! ☀️';
+        new Audio('sounds/rooster.ogg').play().catch(() => {});
+        setTimeout(() => KidsAudio.speak('Good morning! Wake up, everybody!'), 900);
+        startDayAmbience();
+      }
+    }
+    document.getElementById('switch').addEventListener('pointerdown', () => {
+      started = true;
+      setNight(!night);
+    });
+
+    // ---- animals ----
+    animals.forEach(el => {
+      el.addEventListener('pointerdown', () => {
+        const n = el.dataset.n;
+        if (night) {
+          snore();
+          spawnZzz(el);
+          KidsAudio.speak(`Shhh! The ${n === 'rooster' ? 'rooster' : n} is sleeping.`);
+        } else {
+          new Audio(`sounds/${n}.ogg`).play().catch(() => KidsAudio.playChime('yay'));
+        }
+      });
+    });
+
+    // Day ambience begins after the first touch anywhere (audio unlock).
+    window.addEventListener('pointerdown', function first() {
+      if (!started) { started = true; startDayAmbience(); }
+    }, { once: true });
+  </script>
+</body>
+</html>

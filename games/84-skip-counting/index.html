@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Skip Counting</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #f83600 0%, #f9d423 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #4e1200 0%, #4e420a 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #kangaroo { font-size:clamp(50px,13vw,80px); line-height:1; margin-bottom:8px; animation:hop 1.2s infinite; }
+  @keyframes hop { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-16px)} }
+  #seq { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; padding:0 10px; margin-bottom:18px; }
+  .num { min-width:clamp(54px,13vw,74px); height:clamp(54px,13vw,74px); background:rgba(255,255,255,.9); border-radius:16px;
+    display:flex; align-items:center; justify-content:center; font-weight:900; color:#bf360c; padding:0 6px;
+    font-size:clamp(22px,6vw,34px); box-shadow:0 5px 0 rgba(0,0,0,.15); }
+  .num.q { background:rgba(255,255,255,.3); border:3px dashed #fff; color:#fff; }
+  .num.reveal { animation:popin .4s; background:#b6f09c; color:#1b5e20; }
+  @keyframes popin { from{transform:scale(.3)} to{transform:scale(1)} }
+  #choices { display:flex; gap:14px; justify-content:center; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#bf360c; font-weight:900; cursor:pointer;
+    font-size:clamp(24px,7vw,36px); padding:14px 24px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="title">Count the kangaroo's jumps!</h1>
+  <div id="kangaroo">🦘</div>
+  <div id="seq"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const STEPS=[2,5,10,3];
+    const seqEl=document.getElementById('seq'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, step, score=0, locked=false, qCell;
+
+    function newRound(){
+      locked=false; seqEl.innerHTML=''; choicesEl.innerHTML='';
+      step=KidsUtil.rand(STEPS);
+      const start=step*(1+Math.floor(Math.random()*3)); // begin a few steps in sometimes
+      const nums=[]; for(let i=0;i<5;i++) nums.push(start+i*step);
+      const hole=2+Math.floor(Math.random()*3); // hide one of positions 2..4
+      answer=nums[hole];
+      nums.forEach((n,i)=>{
+        const d=document.createElement('div');
+        if(i===hole){ d.className='num q'; d.textContent='?'; qCell=d; }
+        else { d.className='num'; d.textContent=n; }
+        seqEl.appendChild(d);
+      });
+      const opts=new Set([answer]);
+      while(opts.size<3){ opts.add(answer+KidsUtil.rand([-step,step,step*2,-1,1,step-1])); }
+      KidsUtil.shuffle([...opts]).forEach(n=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=n;
+        b.onclick=()=>pick(n,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('The kangaroo is counting by '+step+'s. Which number is missing?');
+    }
+    function pick(n,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(n===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        qCell.textContent=n; qCell.classList.remove('q'); qCell.classList.add('reveal');
+        KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! Counting by '+step+'s. '+answer+'!');
+        confetti(); setTimeout(newRound,2000);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Keep adding '+step+' each jump. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Clock Master</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #355c7d 0%, #6c5b7b 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #16263a 0%, #2c2436 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #clock { margin-bottom:14px; }
+  #choices { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; padding:0 12px; width:min(94vw,600px); }
+  .choice { border:none; border-radius:16px; background:#fff; color:#355c7d; font-weight:900; cursor:pointer;
+    font-size:clamp(16px,4.4vw,22px); padding:14px 20px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>What time does the clock show?</h1>
+  <svg id="clock" width="230" height="230" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="95" fill="#fff" stroke="#333" stroke-width="6"/>
+    <g id="ticks"></g>
+    <g id="numbers"></g>
+    <line id="hourHand" x1="100" y1="100" x2="100" y2="55" stroke="#333" stroke-width="8" stroke-linecap="round"/>
+    <line id="minHand" x1="100" y1="100" x2="100" y2="30" stroke="#e53935" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="100" cy="100" r="6" fill="#333"/>
+  </svg>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // Draw the face: 12 numbers + minute ticks
+    const numbersG=document.getElementById('numbers'), ticksG=document.getElementById('ticks');
+    for(let h=1;h<=12;h++){
+      const a=(h*30-90)*Math.PI/180;
+      const x=100+72*Math.cos(a), y=100+72*Math.sin(a)+6;
+      const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',x); t.setAttribute('y',y); t.setAttribute('text-anchor','middle');
+      t.setAttribute('font-size','18'); t.setAttribute('font-weight','900'); t.setAttribute('fill','#333');
+      t.textContent=h; numbersG.appendChild(t);
+    }
+    for(let m=0;m<60;m++){
+      const a=(m*6-90)*Math.PI/180;
+      const r1=m%5===0?85:90;
+      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',100+r1*Math.cos(a)); l.setAttribute('y1',100+r1*Math.sin(a));
+      l.setAttribute('x2',100+93*Math.cos(a)); l.setAttribute('y2',100+93*Math.sin(a));
+      l.setAttribute('stroke','#999'); l.setAttribute('stroke-width',m%5===0?3:1);
+      ticksG.appendChild(l);
+    }
+
+    const hourHand=document.getElementById('hourHand'), minHand=document.getElementById('minHand'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    const MINS=[0,15,30,45];
+    let answer, score=0, locked=false;
+
+    function timeName(h,m){
+      const next=h%12+1;
+      if(m===0)  return h+" o'clock";
+      if(m===15) return 'quarter past '+h;
+      if(m===30) return 'half past '+h;
+      return 'quarter to '+next;
+    }
+    function setHands(h,m){
+      const minAngle=m*6;
+      const hourAngle=(h%12)*30+m*0.5;
+      minHand.setAttribute('transform','rotate('+minAngle+' 100 100)');
+      hourHand.setAttribute('transform','rotate('+hourAngle+' 100 100)');
+    }
+    function newRound(){
+      locked=false; choicesEl.innerHTML='';
+      const h=1+Math.floor(Math.random()*12);
+      const m=KidsUtil.rand(MINS);
+      setHands(h,m);
+      answer=timeName(h,m);
+      const opts=new Set([answer]);
+      while(opts.size<3){
+        const oh=1+Math.floor(Math.random()*12);
+        opts.add(timeName(oh,KidsUtil.rand(MINS)));
+      }
+      KidsUtil.shuffle([...opts]).forEach(t=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=t;
+        b.onclick=()=>pick(t,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('Look at the clock. What time is it?');
+    }
+    function pick(t,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(t===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! It is '+answer+'!');
+        confetti(); setTimeout(newRound,2100);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Check the little hour hand and the big minute hand. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

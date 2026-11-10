@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Sink or Float?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#e0f7fa,#b3e5fc); --av-ink: #01579b; }
+  .tub { position:relative; width:min(88vw,460px); height:clamp(190px,40vh,330px); border:8px solid #fff; border-top:none;
+    border-radius:0 0 40px 40px; overflow:hidden; background:rgba(255,255,255,.35); box-shadow:0 10px 24px rgba(0,0,0,.18); }
+  .water { position:absolute; left:0; right:0; bottom:0; height:64%; background:linear-gradient(180deg,rgba(41,182,246,.75),rgba(2,119,189,.9)); }
+  .water::before { content:''; position:absolute; left:0; right:0; top:-6px; height:12px; background:rgba(255,255,255,.55); border-radius:50%; }
+  .obj { position:absolute; left:50%; top:2%; transform:translateX(-50%); font-size:clamp(54px,13vmin,84px); line-height:1; transition:top 1.1s cubic-bezier(.4,0,.5,1.3); z-index:2; }
+  .obj.float { top:calc(36% - .62em); animation:bob 1.6s ease-in-out 1.1s infinite; }
+  .obj.sink { top:calc(100% - 1.1em); transition-timing-function:ease-in; }
+  @keyframes bob { 0%,100% { transform:translateX(-50%) translateY(0) rotate(-4deg); } 50% { transform:translateX(-50%) translateY(7px) rotate(4deg); } }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: predict, then test — does it float or sink? Either guess shows the real result.
+    const K = KidsKit, U = KidsUtil, A = KidsAudio;
+    const ITEMS = [['stone','🪨',false,'Stones are heavy.'],['leaf','🍃',true,'A leaf is very light.'],['ball','⚽',true,'It is full of air.'],
+      ['coin','🪙',false,'Metal is heavy.'],['boat','⛵',true,'Boats are made to float.'],['key','🔑',false,'It is made of metal.'],
+      ['duck','🦆',true,'Ducks swim on top of the water.'],['spoon','🥄',false,'It is made of metal.'],['apple','🍎',true,'Apples have air inside.'],
+      ['feather','🪶',true,'A feather is very light.'],['anchor','⚓',false,'An anchor is very heavy.'],['brick','🧱',false,'Bricks are heavy.'],
+      ['balloon','🎈',true,'It is full of air.'],['log','🪵',true,'Wood floats.'],['ice cube','🧊',true,'Ice is lighter than water.'],['bolt','🔩',false,'It is made of metal.']];
+    const draw = K.bag(ITEMS);
+    const ui = K.setup();
+    const tub = K.el('div', 'tub', '<div class="water"></div>'), obj = K.el('div', 'obj');
+    const row = K.el('div', 'av-choices');
+    const bFloat = K.el('button', 'av-choice', K.card('⬆️', 'Floats')), bSink = K.el('button', 'av-choice', K.card('⬇️', 'Sinks'));
+    tub.appendChild(obj); row.append(bFloat, bSink); ui.stage.append(tub, row);
+    let cur, locked = false;
+
+    function ask() { K.say((/^[aeiou]/.test(cur[0]) ? 'An ' : 'A ') + cur[0] + '. Will it float, or sink?'); }
+    function newRound() {
+      locked = false; cur = draw();
+      obj.className = 'obj'; obj.style.transition = 'none'; obj.textContent = cur[1];
+      void obj.offsetWidth; obj.style.transition = '';
+      bFloat.classList.remove('right'); bSink.classList.remove('right');
+      ui.setTitle('Will the ' + cur[0] + ' float or sink?');
+      ask();
+    }
+    function guess(floats, btn) {
+      if (locked) return;
+      locked = true; K.wake(); A.playPop();
+      obj.classList.add(cur[2] ? 'float' : 'sink');           // drop it in and see
+      const truth = 'The ' + cur[0] + (cur[2] ? ' floats. ' : ' sinks. ') + cur[3];
+      let line;
+      if (floats === cur[2]) { btn.classList.add('right'); A.playChime('yay'); K.star(); K.confetti(); line = 'Yes! ' + truth; }
+      else { (cur[2] ? bFloat : bSink).classList.add('right'); line = 'Let us see. Oh! ' + truth; }
+      K.say(line);
+      setTimeout(newRound, K.speakMs(line) + 1200);
+    }
+    bFloat.onclick = () => guess(true, bFloat);
+    bSink.onclick = () => guess(false, bSink);
+    ui.titleEl.onclick = tub.onclick = () => { if (!locked) { K.wake(); ask(); } };
+    newRound();
+  </script>
+</body>
+</html>

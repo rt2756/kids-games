@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>In, On, Under</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #ffecd2 0%, #fcb69f 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #4e3a22 0%, #4e2a1a 100%); }
+  h1 { color:#7a3b00; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; }
+  html[data-theme="dark"] h1 { color:#ffd9b0; }
+  #scene { position:relative; width:220px; height:250px; }
+  #box { position:absolute; left:50%; top:100px; transform:translateX(-50%); width:150px; height:110px;
+    background:#c98443; border-radius:10px; border:5px solid #9c5e24; box-shadow:0 8px 18px rgba(0,0,0,.2); }
+  #box::after { content:''; position:absolute; inset:8px; border:3px dashed rgba(255,255,255,.4); border-radius:6px; }
+  #animal { position:absolute; left:50%; font-size:64px; line-height:1; transform:translateX(-50%); z-index:2; transition:top .4s; }
+  #animal.in    { top:120px; }
+  #animal.on    { top:44px; }
+  #animal.under { top:212px; z-index:1; }
+  #choices { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; padding:16px 12px; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#7a3b00; font-weight:900; cursor:pointer;
+    font-size:clamp(20px,5.5vw,28px); padding:16px 28px; text-transform:uppercase;
+    box-shadow:0 7px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#7a3b00; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#ffd9b0; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="q">Where is the cat?</h1>
+  <div id="scene"><div id="animal">🐱</div><div id="box"></div></div>
+  <div id="choices">
+    <button class="choice" data-p="in">In</button>
+    <button class="choice" data-p="on">On</button>
+    <button class="choice" data-p="under">Under</button>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const ANIMALS=[['🐱','cat'],['🐶','dog'],['🐰','bunny'],['🐸','frog'],['🐥','chick'],['🐭','mouse']];
+    const POS=['in','on','under'];
+    const animalEl=document.getElementById('animal'), qEl=document.getElementById('q'), scoreEl=document.getElementById('score');
+    let answer, animalName, score=0, locked=false;
+
+    function newRound(){
+      locked=false;
+      const [e,name]=KidsUtil.rand(ANIMALS);
+      animalName=name; answer=KidsUtil.rand(POS);
+      animalEl.textContent=e; animalEl.className=answer;
+      qEl.textContent='Where is the '+name+'?';
+      document.querySelectorAll('.choice').forEach(b=>b.classList.remove('right','wrong'));
+      KidsAudio.speak('Where is the '+name+'? In, on, or under the box?');
+    }
+    document.querySelectorAll('.choice').forEach(b=>{
+      b.onclick=()=>{
+        if(locked) return;
+        try{KidsAudio.getAudio();}catch(e){}
+        if(b.dataset.p===answer){
+          locked=true; score++; scoreEl.textContent='⭐ '+score;
+          b.classList.add('right'); KidsAudio.playChime('yay');
+          KidsAudio.speak('Yes! The '+animalName+' is '+answer+' the box!');
+          confetti(); setTimeout(newRound,2000);
+        } else {
+          b.classList.add('wrong'); KidsAudio.playChime('uhoh');
+          KidsAudio.speak('Look again!');
+          setTimeout(()=>b.classList.remove('wrong'),400);
+        }
+      };
+    });
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

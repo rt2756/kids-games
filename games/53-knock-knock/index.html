@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Knock Knock</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #f6d365 0%, #fda085 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a2c14 0%, #3a2018 100%); }
+  h1 { color:#8a4b00; text-align:center; font-weight:900; font-size:clamp(18px,4.6vw,30px); margin:0; padding:80px 16px 6px; }
+  html[data-theme="dark"] h1 { color:#ffd9b0; }
+  #doors { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:8px 16px 20px; max-width:560px; width:100%; margin:0 auto; }
+  .door { border:none; border-radius:18px; background:linear-gradient(180deg,#a86b3c,#7a4a24); cursor:pointer; position:relative;
+    display:flex; align-items:center; justify-content:center; font-size:clamp(48px,15vw,90px); box-shadow:0 8px 0 rgba(0,0,0,.25);
+    overflow:hidden; transition:transform .08s; }
+  .door:active { transform:scale(.97); }
+  .door .knob { position:absolute; right:14%; top:50%; width:12px; height:12px; border-radius:50%; background:#ffd23f; transform:translateY(-50%); }
+  .door.open { background:#fff7e6; }
+  .door .animal { animation:peek .4s ease; }
+  @keyframes peek { from{transform:scale(0) translateY(20px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+</style>
+</head>
+<body>
+  <h1>Knock knock! Who's there? 🚪</h1>
+  <div id="doors"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const ANIMALS=[['cow','🐮','Moo'],['dog','🐶','Woof'],['cat','🐱','Meow'],['duck','🦆','Quack'],
+      ['pig','🐷','Oink'],['sheep','🐑','Baa'],['frog','🐸','Ribbit'],['lion','🦁','Roar']];
+    const doorsEl=document.getElementById('doors');
+    const N=4;
+
+    function makeDoor(){
+      const d=document.createElement('button'); d.className='door';
+      const knob=document.createElement('span'); knob.className='knob'; d.appendChild(knob);
+      d.dataset.open='0';
+      d.onclick=()=>open(d);
+      return d;
+    }
+    function open(d){
+      if(d.dataset.open==='1') return;
+      try{KidsAudio.getAudio();}catch(e){}
+      const [name,emoji,sound]=KidsUtil.rand(ANIMALS);
+      d.dataset.open='1'; d.classList.add('open');
+      d.querySelector('.knob').style.display='none';
+      const a=document.createElement('span'); a.className='animal'; a.textContent=emoji; d.appendChild(a);
+      KidsAudio.playChime('yay');
+      KidsAudio.speak(`It's a ${name}! ${sound}!`, { pitch:1.3 });
+      setTimeout(()=>close(d), 2200);
+    }
+    function close(d){
+      d.classList.remove('open'); d.dataset.open='0';
+      const a=d.querySelector('.animal'); if(a) a.remove();
+      d.querySelector('.knob').style.display='';
+    }
+    for(let i=0;i<N;i++) doorsEl.appendChild(makeDoor());
+    KidsAudio.speak('Tap a door!');
+  </script>
+</body>
+</html>

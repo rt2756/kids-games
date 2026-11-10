@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>ABC Sounds</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #87e0ff 0%, #6dd5ed 45%, #aee6a0 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  html[data-theme="dark"] body {
+    background: linear-gradient(180deg, #0e1b2a 0%, #16263a 55%, #1d3326 100%);
+  }
+
+  /* keep clear of the fixed back / theme buttons (64px at top corners) */
+  #playarea {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 92px;
+    min-height: 0;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  /* A-Z progress strip */
+  #progress {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    padding: 0 8px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+  }
+  #progress span {
+    font-size: clamp(9px, 2.5vw, 15px);
+    font-weight: 900;
+    color: rgba(255,255,255,0.65);
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+    transition: transform 0.2s, color 0.2s;
+    line-height: 1;
+  }
+  #progress span.on {
+    color: #fff;
+    transform: scale(1.7);
+  }
+
+  /* "A is for Apple" line */
+  #word {
+    text-align: center;
+    font-size: clamp(22px, 5.2vw, 44px);
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.18);
+    margin: 6px 12px 0;
+    min-height: 1.2em;
+  }
+
+  /* Picture + big letter flashcard */
+  #stage {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2.5vh, 26px);
+    min-height: 0;
+  }
+  .pic {
+    font-size: clamp(60px, 15vw, 130px);
+    line-height: 1;
+    animation: bob 2s ease-in-out infinite;
+    filter: drop-shadow(0 5px 5px rgba(0,0,0,0.22));
+  }
+  @keyframes bob {
+    0%,100% { transform: translateY(0)    rotate(-4deg); }
+    50%     { transform: translateY(-12px) rotate(4deg); }
+  }
+  .card {
+    background: linear-gradient(160deg, #fff, #ffe9f4);
+    border-radius: 28px;
+    padding: clamp(8px, 2.5vw, 24px) clamp(26px, 9vw, 72px);
+    box-shadow: 0 12px 0 rgba(0,0,0,0.15);
+  }
+  html[data-theme="dark"] .card {
+    background: linear-gradient(160deg, #3a3a44, #2a2a33);
+  }
+  .letter {
+    display: flex;
+    align-items: baseline;
+    line-height: 1;
+    font-family: "Arial Black", sans-serif;
+  }
+  .letter.pop { animation: pop-in 0.4s cubic-bezier(0.2,1.5,0.4,1); }
+  @keyframes pop-in {
+    0%   { transform: scale(0.2) rotate(-15deg); opacity: 0; }
+    60%  { transform: scale(1.15) rotate(4deg);  opacity: 1; }
+    100% { transform: scale(1) rotate(0);        opacity: 1; }
+  }
+  .cap { font-size: clamp(110px, 30vw, 240px); font-weight: 900; }
+
+  /* Auto-play + hint footer */
+  #footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0 16px;
+  }
+  #autoBtn {
+    border: none;
+    border-radius: 30px;
+    background: #fff;
+    color: #2f80ed;
+    font-size: clamp(18px, 4vw, 24px);
+    font-weight: 900;
+    padding: 12px 26px;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.2);
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.08s;
+  }
+  #autoBtn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0,0,0,0.2); }
+  html[data-theme="dark"] #autoBtn { background: #2d2d36; color: #6db3ff; }
+  #hint {
+    color: #fff;
+    font-weight: 700;
+    font-size: clamp(13px, 3vw, 18px);
+    opacity: 0.85;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+  }
+
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.7s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0);      opacity: 1; }
+    to   { transform: translateY(105vh) rotate(380deg); opacity: 0.85; }
+  }
+</style>
+</head>
+<body>
+  <div id="playarea">
+    <div id="progress"></div>
+    <div id="word"></div>
+    <div id="stage">
+      <div class="pic" id="pic">🍎</div>
+      <div class="card">
+        <div class="letter" id="letter"><span class="cap" id="cap">A</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="footer">
+    <button id="autoBtn">▶ Sing A–Z</button>
+    <div id="hint">Tap anywhere for the next letter!</div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // Letter -> [word, picture]. Words chosen for a clear sound + a picture a 3yo knows.
+    const LETTERS = [
+      ['A','Apple','🍎'], ['B','Ball','⚽'], ['C','Cat','🐱'], ['D','Dog','🐶'],
+      ['E','Elephant','🐘'], ['F','Fish','🐟'], ['G','Goat','🐐'], ['H','Hat','🎩'],
+      ['I','Ice cream','🍦'], ['J','Juice','🧃'], ['K','Kite','🪁'], ['L','Lion','🦁'],
+      ['M','Moon','🌙'], ['N','Nose','👃'], ['O','Orange','🍊'], ['P','Pig','🐷'],
+      ['Q','Queen','👑'], ['R','Rabbit','🐰'], ['S','Sun','☀️'], ['T','Tree','🌳'],
+      ['U','Umbrella','☂️'], ['V','Van','🚐'], ['W','Whale','🐳'], ['X','Xylophone','🎵'],
+      ['Y','Yo-yo','🪀'], ['Z','Zebra','🦓'],
+    ];
+    const COLORS = ['#ff4757','#ff7f0e','#f9a825','#2ed573','#1e90ff','#a55eea','#ff6b9d','#ff6348','#00b8a9'];
+
+    const progress = document.getElementById('progress');
+    const wordEl = document.getElementById('word');
+    const picEl = document.getElementById('pic');
+    const capEl = document.getElementById('cap');
+    const letterEl = document.getElementById('letter');
+    const autoBtn = document.getElementById('autoBtn');
+
+    // Build the A-Z progress strip once.
+    const dots = LETTERS.map(([L]) => {
+      const s = document.createElement('span');
+      s.textContent = L;
+      progress.appendChild(s);
+      return s;
+    });
+
+    let idx = 0;
+    let autoTimer = null;
+    let started = false;   // first tap should SAY the letter on screen (A), not skip past it
+
+    function render(celebrate) {
+      const [L, word, pic] = LETTERS[idx];
+      const color = COLORS[idx % COLORS.length];
+
+      capEl.textContent = L;
+      capEl.style.color = color;
+      picEl.textContent = pic;
+      wordEl.innerHTML = `<b style="color:${color}">${L}</b> for <b style="color:${color}">${word}</b>`;
+
+      dots.forEach((d, i) => d.classList.toggle('on', i === idx));
+
+      // restart the pop animation on the letter
+      letterEl.classList.remove('pop');
+      void letterEl.offsetWidth;
+      letterEl.classList.add('pop');
+
+      if (celebrate) {
+        KidsAudio.playChime('yay');
+        KidsAudio.speak('You did it! A to Z! Hooray!');
+        confettiBurst();
+      } else {
+        KidsAudio.playPop();
+        // Say it "A for Apple" style — letter once, no "is".
+        KidsAudio.speak(`${L} for ${word}.`, { rate: 0.9, pitch: 1.2 });
+      }
+    }
+
+    function go(step) {
+      const next = (idx + step + LETTERS.length) % LETTERS.length;
+      // celebrate when we roll forward off Z back to A
+      const celebrate = step > 0 && idx === LETTERS.length - 1 && next === 0;
+      idx = next;
+      render(celebrate);
+    }
+
+    // First interaction speaks the letter already on screen ("A for Apple");
+    // after that, each tap advances to the next letter.
+    function advance() {
+      if (!started) { started = true; render(false); }
+      else go(1);
+    }
+
+    function stopAuto() {
+      if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+      autoBtn.textContent = '▶ Sing A–Z';
+    }
+    function startAuto() {
+      advance();
+      autoTimer = setInterval(() => go(1), 2300);
+      autoBtn.textContent = '⏸ Stop';
+    }
+    autoBtn.addEventListener('click', () => {
+      try { KidsAudio.getAudio(); } catch (e) {}
+      autoTimer ? stopAuto() : startAuto();
+    });
+
+    // Tap the play area to advance. Manual tap stops auto play.
+    document.getElementById('playarea').addEventListener('pointerdown', () => {
+      try { KidsAudio.getAudio(); } catch (e) {}
+      stopAuto();
+      advance();
+    });
+
+    // Physical keyboard: arrows / space to step through the alphabet.
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stopAuto(); advance(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); stopAuto(); started = true; go(-1); }
+    });
+
+    function confettiBurst() {
+      for (let i = 0; i < 30; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(['🎉','⭐','🎈','✨','🌈','🅰️']);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2300);
+      }
+    }
+
+    // Show A on load (no narration until the first tap gives us an audio gesture).
+    dots[0].classList.add('on');
+  </script>
+</body>
+</html>

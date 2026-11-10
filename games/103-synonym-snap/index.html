@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Synonym Snap</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #1f4037 0%, #99f2c8 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0c1a16 0%, #1e4a3a 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #mode { color:#ffd54f; font-weight:900; font-size:clamp(15px,4vw,20px); margin-bottom:4px; text-transform:uppercase; letter-spacing:2px; }
+  #word { color:#fff; font-weight:900; font-size:clamp(40px,11vw,66px); text-transform:uppercase; letter-spacing:4px; text-shadow:3px 3px 0 rgba(0,0,0,.25); margin-bottom:16px; }
+  #choices { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; padding:0 12px; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#1f4037; font-weight:900; cursor:pointer;
+    font-size:clamp(20px,5.5vw,30px); padding:16px 26px; text-transform:uppercase;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="title">Find the matching word!</h1>
+  <div id="mode"></div>
+  <div id="word"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // [word, synonym, antonym]
+    const WORDS=[
+      ['happy','glad','sad'],
+      ['big','huge','tiny'],
+      ['fast','quick','slow'],
+      ['smart','clever','silly'],
+      ['angry','mad','calm'],
+      ['pretty','beautiful','ugly'],
+      ['begin','start','finish'],
+      ['loud','noisy','quiet'],
+      ['brave','bold','scared'],
+      ['easy','simple','difficult'],
+      ['rich','wealthy','poor'],
+      ['shut','close','open'],
+      ['cold','chilly','hot'],
+      ['strong','powerful','weak'],
+      ['tired','sleepy','fresh'],
+      ['old','ancient','new'],
+    ];
+    const modeEl=document.getElementById('mode'), wordEl=document.getElementById('word'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, promptWord, wantSyn, score=0, locked=false;
+
+    function newRound(){
+      locked=false; choicesEl.innerHTML='';
+      const entry=KidsUtil.rand(WORDS);
+      wantSyn=Math.random()<0.6;
+      promptWord=entry[0];
+      answer=wantSyn?entry[1]:entry[2];
+      modeEl.textContent=wantSyn?'Same meaning':'Opposite meaning';
+      wordEl.textContent=promptWord;
+      const opts=new Set([answer]);
+      // The other relation is the trickiest distractor.
+      opts.add(wantSyn?entry[2]:entry[1]);
+      while(opts.size<3){
+        const w=KidsUtil.rand(WORDS);
+        if(w!==entry) opts.add(Math.random()<0.5?w[1]:w[2]);
+      }
+      KidsUtil.shuffle([...opts].slice(0,3)).forEach(w=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=w;
+        b.onclick=()=>pick(w,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak(wantSyn
+        ? 'Which word means the same as '+promptWord+'?'
+        : 'Which word means the opposite of '+promptWord+'?');
+    }
+    function pick(w,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(w===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        KidsAudio.speak(wantSyn
+          ? 'Yes! '+promptWord+' and '+answer+' mean the same thing!'
+          : 'Yes! '+answer+' is the opposite of '+promptWord+'!');
+        confetti(); setTimeout(newRound,2300);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Careful — think about what '+promptWord+' means. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Bath Time</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #a1c4fd 0%, #c2e9fb 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 16px 0 0;
+  }
+  #scene {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #animal {
+    font-size: min(42vh, 64vw, 320px);
+    line-height: 1;
+    user-select: none;
+    position: relative;
+    z-index: 1;
+  }
+  #animal.happy { animation: happy 0.7s ease 2; }
+  @keyframes happy {
+    0%,100% { transform: translateY(0)     rotate(0); }
+    30%     { transform: translateY(-30px) rotate(-6deg); }
+    60%     { transform: translateY(0)     rotate(4deg); }
+  }
+  #mud {
+    position: absolute;
+    z-index: 2;
+    touch-action: none;
+    cursor: pointer;
+  }
+  #tub {
+    position: absolute;
+    bottom: 4vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(80vw, 560px);
+    height: min(16vh, 120px);
+    background: linear-gradient(180deg, #ffffff, #d8e8f5);
+    border-radius: 40px 40px 60px 60px;
+    border: 6px solid #b6cee4;
+    z-index: 3;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+  }
+  #tub::before {
+    content: '🫧 🫧 🫧 🫧 🫧';
+    position: absolute;
+    top: -16px;
+    width: 100%;
+    text-align: center;
+    font-size: 24px;
+    letter-spacing: 12px;
+  }
+  #duck {
+    position: absolute;
+    bottom: calc(4vh + min(16vh, 120px) - 28px);
+    left: calc(50% + min(34vw, 230px));
+    transform: translateX(-50%);
+    font-size: 56px;
+    z-index: 4;
+    cursor: pointer;
+    user-select: none;
+  }
+  #duck.bob { animation: bob 0.5s ease; }
+  @keyframes bob {
+    0%,100% { transform: translateX(-50%) translateY(0)    rotate(0); }
+    50%     { transform: translateX(-50%) translateY(-18px) rotate(-12deg); }
+  }
+  .bubble {
+    position: fixed;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.95), rgba(220,240,255,0.5));
+    border: 1px solid rgba(255,255,255,0.8);
+    pointer-events: none;
+    z-index: 10;
+    animation: rise 1.1s ease-out forwards;
+  }
+  @keyframes rise {
+    from { transform: translateY(0)     scale(0.6); opacity: 1; }
+    to   { transform: translateY(-90px) scale(1.2); opacity: 0; }
+  }
+  .sparkle {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 20;
+    animation: spark 1s ease-out forwards;
+  }
+  @keyframes spark {
+    from { transform: scale(0.3); opacity: 1; }
+    to   { transform: scale(1.6) translateY(-50px); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+  <h1 id="title">Scrub scrub scrub! 🛁</h1>
+  <div id="scene">
+    <div id="animal">🐶</div>
+    <canvas id="mud"></canvas>
+    <div id="tub"></div>
+    <div id="duck">🦆</div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const ANIMALS = [
+      { e: '🐶', n: 'puppy' },   { e: '🐱', n: 'kitty' },
+      { e: '🐷', n: 'piggy' },   { e: '🐮', n: 'cow' },
+      { e: '🐘', n: 'elephant' },{ e: '🐴', n: 'pony' },
+    ];
+    const animalEl = document.getElementById('animal');
+    const canvas = document.getElementById('mud');
+    const cx2 = canvas.getContext('2d', { willReadFrequently: true });
+
+    let idx = 0;
+    let cleanDone = false;
+    let lastScrubSound = 0;
+    let lastCheck = 0;
+
+    function fitCanvas() {
+      const r = animalEl.getBoundingClientRect();
+      const s = document.getElementById('scene').getBoundingClientRect();
+      canvas.width = r.width + 40;
+      canvas.height = r.height + 40;
+      canvas.style.left = (r.left - s.left - 20) + 'px';
+      canvas.style.top  = (r.top - s.top - 20) + 'px';
+      return r.width > 0 && r.height > 0;
+    }
+
+    function paintMud() {
+      cx2.clearRect(0, 0, canvas.width, canvas.height);
+      const W = canvas.width, H = canvas.height;
+      for (let i = 0; i < 34; i++) {
+        // Random blob inside an ellipse roughly covering the animal
+        const a = Math.random() * Math.PI * 2;
+        const rr = Math.sqrt(Math.random());
+        const x = W / 2 + Math.cos(a) * rr * W * 0.36;
+        const y = H / 2 + Math.sin(a) * rr * H * 0.38;
+        const rad = 22 + Math.random() * 42;
+        const g = cx2.createRadialGradient(x, y, 4, x, y, rad);
+        const shade = Math.random() < 0.5 ? '#6d4c2f' : '#5a3d22';
+        g.addColorStop(0, shade);
+        g.addColorStop(0.75, shade + 'dd');
+        g.addColorStop(1, shade + '00');
+        cx2.fillStyle = g;
+        cx2.beginPath();
+        cx2.arc(x, y, rad, 0, Math.PI * 2);
+        cx2.fill();
+      }
+    }
+
+    function newRound() {
+      cleanDone = false;
+      const a = ANIMALS[idx % ANIMALS.length];
+      animalEl.textContent = a.e;
+      animalEl.classList.remove('happy');
+      // The giant emoji can briefly measure 0×0 before the browser lays it
+      // out; sizing the mud canvas then leaves a tiny patch off the animal
+      // that can't be scrubbed. Retry next frame until it has a real size.
+      if (!fitCanvas()) { requestAnimationFrame(newRound); return; }
+      paintMud();
+      KidsAudio.speak(`Oh no! The ${a.n} is all muddy! Scrub, scrub, scrub!`);
+    }
+
+    function scrubSound() {
+      const now = performance.now();
+      if (now - lastScrubSound < 110) return;
+      lastScrubSound = now;
+      const ac = KidsAudio.getAudio(), t = ac.currentTime;
+      const len = ac.sampleRate * 0.06;
+      const buf = ac.createBuffer(1, len, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      const f = ac.createBiquadFilter();
+      f.type = 'highpass'; f.frequency.value = 2400;
+      const g = ac.createGain(); g.gain.value = 0.12;
+      src.connect(f).connect(g).connect(ac.destination);
+      src.start(t);
+    }
+
+    function spawnBubble(x, y) {
+      const b = document.createElement('div');
+      b.className = 'bubble';
+      const s = 12 + Math.random() * 20;
+      b.style.width = b.style.height = s + 'px';
+      b.style.left = (x + (Math.random() - 0.5) * 50) + 'px';
+      b.style.top  = (y + (Math.random() - 0.5) * 40) + 'px';
+      document.body.appendChild(b);
+      setTimeout(() => b.remove(), 1200);
+    }
+
+    function cleanFraction() {
+      const step = 16;
+      let total = 0, clean = 0;
+      const img = cx2.getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let y = 0; y < canvas.height; y += step) {
+        for (let x = 0; x < canvas.width; x += step) {
+          total++;
+          if (img[(y * canvas.width + x) * 4 + 3] < 50) clean++;
+        }
+      }
+      return clean / total;
+    }
+
+    function celebrate() {
+      cleanDone = true;
+      const a = ANIMALS[idx % ANIMALS.length];
+      cx2.clearRect(0, 0, canvas.width, canvas.height);
+      animalEl.classList.add('happy');
+      KidsAudio.playChime('yay');
+      KidsAudio.speak(`All clean! The ${a.n} is so happy! Good job!`);
+      const r = animalEl.getBoundingClientRect();
+      for (let i = 0; i < 10; i++) {
+        setTimeout(() => {
+          const s = document.createElement('div');
+          s.className = 'sparkle';
+          s.textContent = ['✨', '⭐', '💖', '🫧'][i % 4];
+          s.style.left = (r.left + Math.random() * r.width) + 'px';
+          s.style.top  = (r.top + Math.random() * r.height) + 'px';
+          document.body.appendChild(s);
+          setTimeout(() => s.remove(), 1100);
+        }, i * 120);
+      }
+      idx++;
+      setTimeout(newRound, 3200);
+    }
+
+    let scrubbing = false;
+    canvas.addEventListener('pointerdown', (e) => { scrubbing = true; scrub(e); });
+    window.addEventListener('pointerup', () => { scrubbing = false; checkProgress(true); });
+    canvas.addEventListener('pointermove', (e) => { if (scrubbing) scrub(e); });
+
+    function scrub(e) {
+      if (cleanDone) return;
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      cx2.globalCompositeOperation = 'destination-out';
+      // destination-out wipes mud in proportion to the SOURCE alpha, so the
+      // brush must be fully opaque. paintMud() leaves fillStyle as a mostly
+      // transparent gradient; without resetting it here the scrub erases
+      // almost nothing.
+      cx2.fillStyle = '#000';
+      cx2.beginPath();
+      cx2.arc(x, y, 36, 0, Math.PI * 2);
+      cx2.fill();
+      cx2.globalCompositeOperation = 'source-over';
+      scrubSound();
+      if (Math.random() < 0.5) spawnBubble(e.clientX, e.clientY);
+      checkProgress();
+    }
+
+    function checkProgress(force) {
+      const now = performance.now();
+      if (!force && now - lastCheck < 500) return;
+      lastCheck = now;
+      if (!cleanDone && cleanFraction() > 0.86) celebrate();
+    }
+
+    // Rubber duck quacks
+    const duck = document.getElementById('duck');
+    duck.addEventListener('pointerdown', () => {
+      duck.classList.remove('bob');
+      void duck.offsetWidth;
+      duck.classList.add('bob');
+      new Audio('sounds/duck.ogg').play().catch(() => KidsAudio.playChime('yay'));
+    });
+
+    window.addEventListener('resize', () => { if (fitCanvas() && !cleanDone) paintMud(); });
+    newRound();
+  </script>
+</body>
+</html>

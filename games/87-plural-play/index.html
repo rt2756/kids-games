@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>One or Many?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #56ab2f 0%, #a8e063 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #1c3a10 0%, #354e1a 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #pics { font-size:clamp(46px,12vw,70px); line-height:1.1; text-align:center; max-width:92vw; }
+  #sentence { color:#fff; font-weight:900; font-size:clamp(24px,6.5vw,40px); margin:12px 0 6px; text-align:center; text-shadow:2px 2px 0 rgba(0,0,0,.2); padding:0 14px; }
+  #choices { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; padding:14px 12px; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#2e7d32; font-weight:900; cursor:pointer;
+    font-size:clamp(20px,5.5vw,30px); padding:14px 26px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>One or many? Pick the right word!</h1>
+  <div id="pics"></div>
+  <div id="sentence"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // [singular, plural, emoji, wrongPlural]
+    const WORDS=[
+      ['cat','cats','🐱','cates'],
+      ['dog','dogs','🐶','doges'],
+      ['apple','apples','🍎','appels'],
+      ['star','stars','⭐','stares'],
+      ['book','books','📕','bookes'],
+      ['box','boxes','📦','boxs'],
+      ['bus','buses','🚌','buss'],
+      ['brush','brushes','🪥','brushs'],
+      ['baby','babies','👶','babys'],
+      ['puppy','puppies','🐶','puppys'],
+      ['man','men','👨','mans'],
+      ['mouse','mice','🐭','mouses'],
+      ['foot','feet','🦶','foots'],
+      ['tooth','teeth','🦷','tooths'],
+      ['child','children','🧒','childs'],
+      ['fish','fish','🐟','fishes'],
+      ['sheep','sheep','🐑','sheeps'],
+    ];
+    const pics=document.getElementById('pics'), sentence=document.getElementById('sentence'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, count, word, score=0, locked=false;
+
+    function newRound(){
+      locked=false; choicesEl.innerHTML='';
+      word=KidsUtil.rand(WORDS);
+      count=2+Math.floor(Math.random()*3); // 2..4
+      answer=word[1];
+      pics.textContent=word[2].repeat(count);
+      sentence.textContent='One '+word[0]+', '+count+' ___';
+      const opts=new Set([answer,word[3]]);
+      // Third distractor: another word's plural or the singular itself.
+      // Keep adding until we truly have 3 — for words like "fish" the
+      // singular equals the plural and would collapse the set.
+      opts.add(Math.random()<0.5?word[0]:KidsUtil.rand(WORDS)[1]);
+      while(opts.size<3) opts.add(KidsUtil.rand(WORDS)[1]);
+      KidsUtil.shuffle([...opts].slice(0,3)).forEach(w=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=w;
+        b.onclick=()=>pick(w,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('One '+word[0]+'. '+count+' what?');
+    }
+    function pick(w,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(w===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right');
+        sentence.textContent='One '+word[0]+', '+count+' '+answer+'!';
+        KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! One '+word[0]+', '+count+' '+answer+'!');
+        confetti(); setTimeout(newRound,2300);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Not quite. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

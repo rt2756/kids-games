@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Months of the Year</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #f857a6 0%, #8e2de2 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  html[data-theme="dark"] body {
+    background: linear-gradient(180deg, #2a1020 0%, #1a1030 100%);
+  }
+
+  /* keep clear of the fixed back / theme buttons (64px at top corners) */
+  #playarea {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 92px;
+    min-height: 0;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  /* Month progress strip (wraps to two rows on phones) */
+  #progress {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 5px 8px;
+    width: 100%;
+    max-width: 520px;
+    padding: 0 8px;
+    margin-bottom: 6px;
+  }
+  #progress span {
+    font-size: clamp(10px, 2.6vw, 16px);
+    font-weight: 900;
+    color: rgba(255,255,255,0.7);
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+    transition: transform 0.2s, color 0.2s;
+    line-height: 1;
+  }
+  #progress span.on {
+    color: #fff;
+    transform: scale(1.5);
+  }
+
+  #stage {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2.5vh, 26px);
+    min-height: 0;
+  }
+  .pic {
+    font-size: clamp(60px, 15vw, 130px);
+    line-height: 1;
+    animation: bob 2s ease-in-out infinite;
+    filter: drop-shadow(0 5px 5px rgba(0,0,0,0.22));
+  }
+  @keyframes bob {
+    0%,100% { transform: translateY(0)    rotate(-4deg); }
+    50%     { transform: translateY(-12px) rotate(4deg); }
+  }
+  .card {
+    background: linear-gradient(160deg, #fff, #fdeef6);
+    border-radius: 28px;
+    padding: clamp(10px, 3vw, 26px) clamp(20px, 7vw, 56px);
+    box-shadow: 0 12px 0 rgba(0,0,0,0.15);
+    max-width: 92vw;
+  }
+  html[data-theme="dark"] .card {
+    background: linear-gradient(160deg, #3a3a44, #2a2a33);
+  }
+  .monthname {
+    font-size: clamp(28px, 9.5vw, 80px);
+    font-weight: 900;
+    line-height: 1;
+    font-family: "Arial Black", sans-serif;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .monthname.pop { animation: pop-in 0.4s cubic-bezier(0.2,1.5,0.4,1); }
+  @keyframes pop-in {
+    0%   { transform: scale(0.2) rotate(-12deg); opacity: 0; }
+    60%  { transform: scale(1.12) rotate(3deg);  opacity: 1; }
+    100% { transform: scale(1) rotate(0);        opacity: 1; }
+  }
+
+  #footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0 16px;
+  }
+  #autoBtn {
+    border: none;
+    border-radius: 30px;
+    background: #fff;
+    color: #b5179e;
+    font-size: clamp(18px, 4vw, 24px);
+    font-weight: 900;
+    padding: 12px 26px;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.2);
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.08s;
+  }
+  #autoBtn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0,0,0,0.2); }
+  html[data-theme="dark"] #autoBtn { background: #2d2d36; color: #ff8fd0; }
+  #hint {
+    color: #fff;
+    font-weight: 700;
+    font-size: clamp(13px, 3vw, 18px);
+    opacity: 0.9;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+  }
+
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.7s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0);      opacity: 1; }
+    to   { transform: translateY(105vh) rotate(380deg); opacity: 0.85; }
+  }
+</style>
+</head>
+<body>
+  <div id="playarea">
+    <div id="progress"></div>
+    <div id="stage">
+      <div class="pic" id="pic">❄️</div>
+      <div class="card"><div class="monthname" id="monthname">January</div></div>
+    </div>
+  </div>
+  <div id="footer">
+    <button id="autoBtn">▶ Sing the months</button>
+    <div id="hint">Tap anywhere for the next month!</div>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // [name, emoji, color, short]
+    const MONTHS = [
+      ['January',   '❄️', '#4895ef', 'Jan'],
+      ['February',  '💝', '#ff6b9d', 'Feb'],
+      ['March',     '🍀', '#43aa8b', 'Mar'],
+      ['April',     '🌧️', '#48cae4', 'Apr'],
+      ['May',       '🌷', '#f72585', 'May'],
+      ['June',      '☀️', '#ff9f1c', 'Jun'],
+      ['July',      '🎆', '#e63946', 'Jul'],
+      ['August',    '🏖️', '#fb8500', 'Aug'],
+      ['September', '🍎', '#6a994e', 'Sep'],
+      ['October',   '🎃', '#f77f00', 'Oct'],
+      ['November',  '🍁', '#bc6c25', 'Nov'],
+      ['December',  '🎄', '#2a9d8f', 'Dec'],
+    ];
+
+    const progress = document.getElementById('progress');
+    const picEl = document.getElementById('pic');
+    const nameEl = document.getElementById('monthname');
+    const autoBtn = document.getElementById('autoBtn');
+
+    // Build the progress strip once.
+    const dots = MONTHS.map(([, , , short]) => {
+      const s = document.createElement('span');
+      s.textContent = short;
+      progress.appendChild(s);
+      return s;
+    });
+
+    let idx = 0;
+    let autoTimer = null;
+    let started = false;   // first tap should SAY the month on screen, not skip it
+
+    function render(celebrate) {
+      const [name, emoji, color] = MONTHS[idx];
+      nameEl.textContent = name;
+      nameEl.style.color = color;
+      picEl.textContent = emoji;
+      dots.forEach((d, i) => d.classList.toggle('on', i === idx));
+
+      nameEl.classList.remove('pop');
+      void nameEl.offsetWidth;
+      nameEl.classList.add('pop');
+
+      if (celebrate) {
+        KidsAudio.playChime('yay');
+        KidsAudio.speak('You know all the months of the year! Hooray!');
+        confettiBurst();
+      } else {
+        KidsAudio.playPop();
+        KidsAudio.speak(name);
+      }
+    }
+
+    function go(step) {
+      const next = (idx + step + MONTHS.length) % MONTHS.length;
+      // celebrate when we roll forward off December back to January
+      const celebrate = step > 0 && idx === MONTHS.length - 1 && next === 0;
+      idx = next;
+      render(celebrate);
+    }
+
+    // First interaction speaks the month already on screen; after that, advance.
+    function advance() {
+      if (!started) { started = true; render(false); }
+      else go(1);
+    }
+
+    function stopAuto() {
+      if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+      autoBtn.textContent = '▶ Sing the months';
+    }
+    function startAuto() {
+      advance();
+      autoTimer = setInterval(() => go(1), 1600);
+      autoBtn.textContent = '⏸ Stop';
+    }
+    autoBtn.addEventListener('click', () => {
+      try { KidsAudio.getAudio(); } catch (e) {}
+      autoTimer ? stopAuto() : startAuto();
+    });
+
+    // Tap the play area to advance. Manual tap stops auto play.
+    document.getElementById('playarea').addEventListener('pointerdown', () => {
+      try { KidsAudio.getAudio(); } catch (e) {}
+      stopAuto();
+      advance();
+    });
+
+    // Physical keyboard: arrows / space to step through the year.
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stopAuto(); advance(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); stopAuto(); started = true; go(-1); }
+    });
+
+    function confettiBurst() {
+      for (let i = 0; i < 28; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(['🎉','⭐','🎈','✨','🌈','💖']);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2300);
+      }
+    }
+
+    // Show January on load (no narration until the first tap gives an audio gesture).
+    dots[0].classList.add('on');
+  </script>
+</body>
+</html>

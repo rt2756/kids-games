@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Where's Your Nose?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #fbc2eb 0%, #a6c1ee 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 18px 10px 4px;
+    cursor: pointer;
+    user-select: none;
+  }
+  #question {
+    text-align: center;
+    color: #5b3a8a;
+    background: rgba(255,255,255,0.85);
+    border-radius: 999px;
+    padding: 10px 26px;
+    font-size: clamp(20px, 3.5vw, 30px);
+    font-weight: 800;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    cursor: pointer;
+    user-select: none;
+  }
+  #question .hint { font-size: 0.7em; opacity: 0.6; }
+  #stars {
+    min-height: 34px;
+    font-size: 26px;
+    letter-spacing: 4px;
+    margin-top: 6px;
+    user-select: none;
+  }
+  #bear-wrap {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+  svg { height: 96%; max-width: 96vw; }
+
+  .part { cursor: pointer; }
+  .part > * { transform-box: fill-box; transform-origin: center; }
+  .part.wiggle > * { animation: wiggle 0.7s ease; }
+  @keyframes wiggle {
+    0%,100% { transform: rotate(0deg)  scale(1); }
+    25%     { transform: rotate(-10deg) scale(1.18); }
+    50%     { transform: rotate(8deg)  scale(1.22); }
+    75%     { transform: rotate(-6deg) scale(1.12); }
+  }
+  .part.glow > * { filter: drop-shadow(0 0 14px gold) drop-shadow(0 0 26px #fff176); }
+  .part.nope > * { animation: nope 0.5s ease; }
+  @keyframes nope {
+    0%,100% { transform: translateX(0); }
+    30%     { transform: translateX(-8px); }
+    60%     { transform: translateX(8px); }
+  }
+
+  .confetti {
+    position: fixed;
+    font-size: 30px;
+    pointer-events: none;
+    z-index: 500;
+    animation: fall 1.6s ease-in forwards;
+  }
+  @keyframes fall {
+    from { transform: translateY(-40px) rotate(0deg);   opacity: 1; }
+    to   { transform: translateY(105vh) rotate(360deg); opacity: 0.8; }
+  }
+</style>
+</head>
+<body>
+  <h1>Where's Your Nose? 🧸</h1>
+  <div id="question"><span id="q-text">Tap to start!</span> <span class="hint">🔊</span></div>
+  <div id="stars"></div>
+
+  <div id="bear-wrap">
+    <svg viewBox="0 0 400 520" xmlns="http://www.w3.org/2000/svg" aria-label="Teddy bear">
+      <!-- ears -->
+      <g class="part" data-part="ears" data-plural="1">
+        <circle cx="130" cy="62"  r="34" fill="#c98a4b"/>
+        <circle cx="130" cy="62"  r="18" fill="#e8b984"/>
+        <circle cx="270" cy="62"  r="34" fill="#c98a4b"/>
+        <circle cx="270" cy="62"  r="18" fill="#e8b984"/>
+      </g>
+
+      <!-- head -->
+      <circle cx="200" cy="130" r="88" fill="#c98a4b"/>
+      <!-- cheeks -->
+      <circle cx="148" cy="150" r="13" fill="#f2a0a0" opacity="0.7"/>
+      <circle cx="252" cy="150" r="13" fill="#f2a0a0" opacity="0.7"/>
+
+      <!-- eyes -->
+      <g class="part" data-part="eyes" data-plural="1">
+        <circle cx="172" cy="110" r="15" fill="#fff"/>
+        <circle cx="228" cy="110" r="15" fill="#fff"/>
+        <circle class="pupil" cx="174" cy="112" r="8" fill="#3a2410"/>
+        <circle class="pupil" cx="230" cy="112" r="8" fill="#3a2410"/>
+        <circle cx="177" cy="108" r="3" fill="#fff"/>
+        <circle cx="233" cy="108" r="3" fill="#fff"/>
+      </g>
+
+      <!-- muzzle -->
+      <ellipse cx="200" cy="162" rx="46" ry="34" fill="#e8b984"/>
+
+      <!-- nose -->
+      <g class="part" data-part="nose">
+        <ellipse cx="200" cy="150" rx="16" ry="12" fill="#5b3a1e"/>
+        <ellipse cx="195" cy="146" rx="5"  ry="3.5" fill="#8a6240"/>
+      </g>
+
+      <!-- mouth -->
+      <g class="part" data-part="mouth">
+        <rect x="176" y="160" width="48" height="30" fill="transparent"/>
+        <path d="M 200 162 L 200 170 M 182 172 Q 200 190 218 172"
+              stroke="#5b3a1e" stroke-width="5" fill="none" stroke-linecap="round"/>
+      </g>
+
+      <!-- arms -->
+      <ellipse cx="98"  cy="310" rx="30" ry="58" fill="#c98a4b" transform="rotate(18 98 310)"/>
+      <ellipse cx="302" cy="310" rx="30" ry="58" fill="#c98a4b" transform="rotate(-18 302 310)"/>
+
+      <!-- body -->
+      <ellipse cx="200" cy="360" rx="98" ry="112" fill="#c98a4b"/>
+
+      <!-- tummy -->
+      <g class="part" data-part="tummy">
+        <ellipse cx="200" cy="372" rx="60" ry="74" fill="#e8b984"/>
+        <circle cx="200" cy="372" r="7" fill="#d4a06a"/>
+      </g>
+
+      <!-- hands -->
+      <g class="part" data-part="hands" data-plural="1">
+        <circle cx="84"  cy="364" r="27" fill="#e8b984"/>
+        <circle cx="316" cy="364" r="27" fill="#e8b984"/>
+      </g>
+
+      <!-- feet -->
+      <g class="part" data-part="feet" data-plural="1">
+        <ellipse cx="148" cy="480" rx="40" ry="32" fill="#c98a4b"/>
+        <ellipse cx="148" cy="486" rx="24" ry="18" fill="#e8b984"/>
+        <ellipse cx="252" cy="480" rx="40" ry="32" fill="#c98a4b"/>
+        <ellipse cx="252" cy="486" rx="24" ry="18" fill="#e8b984"/>
+      </g>
+    </svg>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const parts = [...document.querySelectorAll('.part')];
+    const qText = document.getElementById('q-text');
+    const starsEl = document.getElementById('stars');
+
+    let current = null;   // part name being asked
+    let busy = false;     // ignore taps during celebrations
+    let stars = 0;
+    let lastAsked = null;
+
+    function partEl(name) { return parts.find(p => p.dataset.part === name); }
+    function isPlural(name) { return !!partEl(name).dataset.plural; }
+
+    function phrase(name) {
+      return isPlural(name) ? `Where are the ${name}?` : `Where is the ${name}?`;
+    }
+    function praise(name) {
+      const lead = KidsUtil.rand(['Yes!', 'Hooray!', 'Great job!', 'You found them!']);
+      const that = isPlural(name) ? `Those are the ${name}!` : `That's the ${name}!`;
+      return `${lead} ${that}`;
+    }
+
+    function ask(next) {
+      current = next || KidsUtil.rand(parts.filter(p => p.dataset.part !== lastAsked)).dataset.part;
+      lastAsked = current;
+      qText.textContent = phrase(current);
+      KidsAudio.speak(phrase(current));
+    }
+
+    function confettiBurst(n = 24) {
+      const emo = ['🎉','⭐','💛','✨','🎈'];
+      for (let i = 0; i < n; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(emo);
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2200);
+      }
+    }
+
+    function onPartTap(p) {
+      if (busy || !current) return;
+      const name = p.dataset.part;
+
+      if (name === current) {
+        busy = true;
+        p.classList.add('wiggle', 'glow');
+        KidsAudio.playChime('yay');
+        KidsAudio.speak(praise(name));
+        stars++;
+        starsEl.textContent = '⭐'.repeat(((stars - 1) % 10) + 1);
+        if (stars % 5 === 0) confettiBurst();
+        setTimeout(() => {
+          p.classList.remove('wiggle', 'glow');
+          busy = false;
+          ask();
+        }, 1700);
+      } else {
+        p.classList.add('nope');
+        KidsAudio.playChime('uhoh');
+        const that = isPlural(name) ? `Those are the ${name}.` : `That's the ${name}.`;
+        KidsAudio.speak(`${that} ${phrase(current)}`);
+        setTimeout(() => p.classList.remove('nope'), 600);
+      }
+    }
+
+    parts.forEach(p => p.addEventListener('pointerdown', () => onPartTap(p)));
+
+    // Tap the question pill (or title) to hear it again — also starts the game.
+    function startOrRepeat() {
+      if (!current) ask('nose');
+      else KidsAudio.speak(phrase(current));
+    }
+    document.getElementById('question').addEventListener('pointerdown', startOrRepeat);
+    document.querySelector('h1').addEventListener('pointerdown', startOrRepeat);
+
+    // First interaction anywhere starts the game (audio needs a user gesture anyway).
+    window.addEventListener('pointerdown', function first() {
+      window.removeEventListener('pointerdown', first);
+      if (!current) ask('nose');
+    }, { once: true });
+
+    // The bear blinks now and then — keeps him alive.
+    const pupils = [...document.querySelectorAll('.pupil')];
+    setInterval(() => {
+      pupils.forEach(p => p.setAttribute('ry', 1) || p.setAttribute('r', 1));
+      setTimeout(() => pupils.forEach(p => p.setAttribute('r', 8)), 160);
+    }, 4200);
+  </script>
+</body>
+</html>

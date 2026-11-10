@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Ball Sort</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<link rel="stylesheet" href="../../shared/tubes.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#141e30,#35577d); --av-ink: #fff; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script src="../../shared/tubes.js"></script>
+  <script>
+    // Concept: planning ahead. Only the top ball moves, and only onto its own
+    // colour or into an empty tube. Colours are added every two levels.
+    KidsTubes.start({
+      id: 'ball-sort', mode: 'ball',
+      intro: 'Sort the balls so every tube holds one colour. A ball can only land on its own colour, or in an empty tube.',
+      level: n => ({ n: Math.min(3 + Math.floor(n / 2), 10), cap: 4, empties: 2 })
+    });
+  </script>
+</body>
+</html>

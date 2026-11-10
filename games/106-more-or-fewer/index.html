@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>More or Fewer?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#ffe3e3,#fad0c4); --av-ink: #7a2f3b; }
+  .plate { display:block; width:clamp(120px,36vmin,230px); font-size:clamp(26px,7vmin,44px); line-height:1.2; text-align:center; }
+  .av-choice { border-radius:50%; aspect-ratio:1; padding:18px; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: comparing quantities — more / fewer, before any counting is needed.
+    const K = KidsKit, U = KidsUtil;
+    const W = ['zero','one','two','three','four','five','six','seven','eight','nine','ten'];
+    const THINGS = [['cookies','🍪'],['apples','🍎'],['stars','⭐'],['balls','⚽'],['fish','🐟'],['flowers','🌸'],['cars','🚗'],['laddoos','🟠']];
+    K.quiz({ next(round) {
+      const t = U.rand(THINGS);
+      // Early rounds: small groups with an obvious gap. Later: closer together.
+      const max = round < 6 ? 6 : 9, gap = round < 6 ? 2 : 1;
+      let a, b;
+      do { a = 1 + Math.floor(Math.random() * max); b = 1 + Math.floor(Math.random() * max); } while (Math.abs(a - b) < gap);
+      const more = round < 3 || Math.random() < 0.55;
+      const word = more ? 'more' : 'fewer';
+      const win = more ? Math.max(a, b) : Math.min(a, b), lose = a + b - win;
+      return {
+        title: 'Which plate has <u>' + word.toUpperCase() + '</u> ' + t[0] + '?',
+        say: 'Which plate has ' + word + ' ' + t[0] + '?',
+        choices: [a, b].map(n => ({ html: '<span class="plate">' + t[1].repeat(n) + '</span>', ok: n === win,
+          say: 'Look again. Which plate has ' + word + '?' })),
+        praise: 'Yes! ' + W[win] + ' is ' + word + ' than ' + W[lose] + '.',
+      };
+    } });
+  </script>
+</body>
+</html>

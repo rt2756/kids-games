@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Light Up</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+
+<style>
+  body { --av-bg: linear-gradient(180deg,#0f0c29,#302b63); --av-ink: #fff; }
+    .board { display:grid; gap:6px; }
+    .lamp { border:none; border-radius:18%; background:#2a2752; cursor:pointer; padding:0; font-size:inherit; line-height:1;
+      box-shadow:inset 0 0 0 3px rgba(255,255,255,.14); transition:background .15s; }
+    .lamp.on { background:#ffe066; box-shadow:0 0 18px rgba(255,224,102,.7); }
+    .lamp.hint { outline:5px solid #ff7ad9; animation:av-pulse .8s ease-in-out infinite; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+
+  <script>
+    // Concept: cause and effect, undoing your own steps. A tap flips that light
+    // and its neighbours. Each board is made by tapping from the all-lit board,
+    // so it can always be solved — and those taps are the hint.
+    const K = KidsKit, A = KidsAudio;
+    const INTRO = 'Light up every lamp. Tapping a lamp flips it, and the lamps next to it.';
+    const ui = K.setup();
+    const sub = K.el('div', 'av-sub av-hint', INTRO), fit = K.el('div', 'av-fit'), board = K.el('div', 'board'), bar = K.el('div', 'av-bar');
+    fit.appendChild(board); ui.stage.classList.add('av-puzzle'); ui.stage.append(sub, fit, bar);
+    sub.onclick = () => { K.wake(); K.say(INTRO); };
+    let N, on, need, init, moves, locked, timer, first = true, nodes = [];
+    const mk = (label, fn) => { const b = K.el('button', 'av-btn', label); b.onclick = () => { K.wake(); fn(); }; bar.appendChild(b); };
+    mk('🔄 Again', () => set(init));
+    mk('💡 Hint', () => { if (locked) return; const i = [...need][0]; if (i != null) { nodes[i].classList.add('hint'); } });
+
+    function flip(i) {
+      const x = i % N, y = Math.floor(i / N);
+      [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+        const a = x + dx, b = y + dy;
+        if (a >= 0 && a < N && b >= 0 && b < N) on[b * N + a] = !on[b * N + a];
+      });
+      need.has(i) ? need.delete(i) : need.add(i);
+    }
+    function size() {
+      const s = Math.floor(Math.min(fit.clientWidth / N, fit.clientHeight / N, 150));
+      board.style.width = board.style.height = s * N + 'px';
+      board.style.gridTemplateColumns = board.style.gridTemplateRows = 'repeat(' + N + ', 1fr)';
+      board.style.fontSize = Math.round(s * .5) + 'px';
+    }
+    function draw() {
+      nodes.forEach((b, i) => { b.classList.toggle('on', on[i]); b.textContent = on[i] ? '💡' : ''; });
+      sub.textContent = moves ? 'Moves: ' + moves : INTRO;
+    }
+    function set(presses) {
+      clearTimeout(timer);
+      init = presses.slice(); on = Array(N * N).fill(true); need = new Set(); moves = 0; locked = false;
+      presses.forEach(flip);
+      board.innerHTML = ''; nodes = [];
+      for (let i = 0; i < N * N; i++) {
+        const b = K.el('button', 'lamp');
+        b.onclick = () => tap(i);
+        nodes.push(b); board.appendChild(b);
+      }
+      draw(); size();
+    }
+    function tap(i) {
+      if (locked) return;
+      K.wake(); nodes.forEach(b => b.classList.remove('hint'));
+      flip(i); moves++; A.playPop(); draw();
+      if (on.every(Boolean)) {
+        locked = true; K.star(); A.playChime('yay'); K.confetti();
+        const line = 'All lit up in ' + moves + (moves === 1 ? ' move!' : ' moves!');
+        K.say(line); timer = setTimeout(() => L.win(), K.speakMs(line) + 900);
+      }
+    }
+    const L = K.levels('light-up', ui, n => {
+      N = n < 5 ? 3 : n < 10 ? 4 : 5;
+      const count = n < 5 ? 1 + n : n < 10 ? n - 1 : Math.min(n - 3, 12);
+      const all = []; for (let i = 0; i < N * N; i++) all.push(i);
+      set(KidsUtil.shuffle(all).slice(0, count));
+      K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

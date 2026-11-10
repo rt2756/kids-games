@@ -1,0 +1,16 @@
+{
+  "name": "Little Learners Games",
+  "short_name": "Kids Games",
+  "description": "Learning games that grow with your child, ages 1 to 10.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffd89b",
+  "theme_color": "#ff8f70",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

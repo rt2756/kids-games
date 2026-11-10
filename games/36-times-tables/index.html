@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Times Tables</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #654ea3 0%, #eaafc8 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center;
+  }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #20193a 0%, #3a2733 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.4vw,28px); margin:0; padding:80px 16px 4px; text-shadow:2px 2px 0 rgba(0,0,0,.18); }
+  #tables { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; padding:4px 10px; }
+  .tbtn { border:none; border-radius:999px; padding:8px 14px; font-weight:900; font-size:15px; cursor:pointer; font-family:inherit;
+    background:rgba(255,255,255,.25); color:#fff; }
+  .tbtn.on { background:#fff; color:#654ea3; }
+  #stats { display:flex; gap:18px; color:#fff; font-weight:900; font-size:clamp(14px,3.2vw,18px); margin:6px 0; }
+  #q { color:#fff; font-weight:900; font-size:clamp(38px,11vw,72px); margin:8px 0; text-shadow:2px 2px 0 rgba(0,0,0,.18); }
+  #choices { display:grid; grid-template-columns:1fr 1fr; gap:clamp(10px,3vw,18px); padding:6px 12px 20px; }
+  .choice { width:clamp(110px,32vw,180px); height:clamp(62px,14vw,88px); border:none; border-radius:18px; background:#fff;
+    color:#654ea3; font-weight:900; font-size:clamp(28px,7vw,44px); cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; background:#f6d2e2; }
+  .choice.right { background:#b6f09c; color:#2d7a00; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+</style>
+</head>
+<body>
+  <h1>✖️ Times Tables</h1>
+  <div id="tables"></div>
+  <div id="stats"><span id="score">Score 0</span><span id="streak">🔥 0</span></div>
+  <div id="q"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const TABLES=[2,3,4,5,10,'Mix'];
+    const tablesEl=document.getElementById('tables'), qEl=document.getElementById('q'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score'), streakEl=document.getElementById('streak');
+    let table=2, a, b, answer, score=0, streak=0, locked=false;
+
+    function renderTables(){
+      tablesEl.innerHTML='';
+      TABLES.forEach(t=>{ const btn=document.createElement('button'); btn.className='tbtn'+(t===table?' on':'');
+        btn.textContent=(t==='Mix')?'Mix':(t+'×'); btn.onclick=()=>{ table=t; renderTables(); newRound(); }; tablesEl.appendChild(btn); });
+    }
+
+    function newRound(){
+      locked=false;
+      a=(table==='Mix')?(2+Math.floor(Math.random()*9)):table;
+      b=1+Math.floor(Math.random()*10);
+      answer=a*b; qEl.textContent=`${a} × ${b}`;
+      const opts=new Set([answer]);
+      while(opts.size<4){ const bb=1+Math.floor(Math.random()*10); const aa=(table==='Mix')?(2+Math.floor(Math.random()*9)):a; const d=aa*bb; if(d!==answer) opts.add(d); if(opts.size<4) opts.add(answer+(Math.floor(Math.random()*7)-3)); }
+      const clean=[...opts].filter(n=>n>0).slice(0,4); while(clean.length<4) clean.push(answer+clean.length);
+      choicesEl.innerHTML='';
+      KidsUtil.shuffle(clean).forEach(n=>{ const c=document.createElement('button'); c.className='choice'; c.textContent=n; c.onclick=()=>pick(n,c); choicesEl.appendChild(c); });
+      KidsAudio.speak(`${a} times ${b}?`);
+    }
+
+    function pick(n,c){
+      if(locked) return; locked=true;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(n===answer){ c.classList.add('right'); score++; streak++; scoreEl.textContent='Score '+score; streakEl.textContent='🔥 '+streak;
+        KidsAudio.playChime('yay'); if(streak%5===0&&streak>0) KidsAudio.speak(streak+' in a row! Amazing!'); else KidsAudio.speak(`${a} times ${b} is ${answer}!`);
+        setTimeout(newRound,1100);
+      } else { c.classList.add('wrong'); streak=0; streakEl.textContent='🔥 0'; KidsAudio.playChime('uhoh');
+        [...choicesEl.children].forEach(x=>{ if(+x.textContent===answer) x.classList.add('right'); });
+        KidsAudio.speak(`It is ${answer}.`); setTimeout(newRound,1500);
+      }
+    }
+    renderTables(); newRound();
+  </script>
+</body>
+</html>

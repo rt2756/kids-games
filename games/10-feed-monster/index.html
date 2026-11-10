@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Feed the Monster</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #2bc0e4 0%, #eaecc6 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 16px 0 0;
+  }
+  #monster-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+  #monster-svg { height: 92%; max-width: 90vw; }
+  #monster-svg.bounce { animation: bounce 0.6s ease; }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0)     scale(1); }
+    30%     { transform: translateY(-26px) scale(1.06); }
+    60%     { transform: translateY(0)     scale(0.97); }
+  }
+
+  #bubble {
+    position: absolute;
+    top: 2%;
+    right: 6%;
+    background: white;
+    border-radius: 28px;
+    padding: 10px 20px;
+    font-size: clamp(40px, 7vw, 64px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    user-select: none;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    transform: scale(0.6);
+  }
+  #bubble.show { opacity: 1; transform: scale(1); }
+  #bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -16px;
+    left: 24px;
+    width: 22px;
+    height: 22px;
+    background: white;
+    border-radius: 50%;
+  }
+
+  #tray {
+    height: 130px;
+    position: relative;
+  }
+  .food {
+    position: fixed;
+    width: 96px;
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 72px;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    transition: transform 0.12s;
+    z-index: 20;
+  }
+  .food.dragging { cursor: grabbing; transform: scale(1.25); z-index: 30; }
+  .food.home { transition: left 0.35s ease, top 0.35s ease, transform 0.12s; }
+  .food.eaten { transition: transform 0.18s; transform: scale(0); }
+</style>
+</head>
+<body>
+  <h1>Feed the Monster! 👾</h1>
+
+  <div id="monster-wrap">
+    <svg id="monster-svg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+      <!-- horns -->
+      <path d="M 130 70 L 110 18 L 162 52 Z" fill="#5e35a8"/>
+      <path d="M 270 70 L 290 18 L 238 52 Z" fill="#5e35a8"/>
+      <!-- body -->
+      <circle cx="200" cy="215" r="118" fill="#8e5bd8"/>
+      <circle cx="138" cy="270" r="17" fill="#a87fe8" opacity="0.8"/>
+      <circle cx="262" cy="160" r="13" fill="#a87fe8" opacity="0.8"/>
+      <circle cx="255" cy="290" r="11" fill="#a87fe8" opacity="0.8"/>
+      <!-- feet -->
+      <ellipse cx="150" cy="338" rx="34" ry="20" fill="#5e35a8"/>
+      <ellipse cx="250" cy="338" rx="34" ry="20" fill="#5e35a8"/>
+      <!-- eyes -->
+      <g>
+        <circle cx="160" cy="148" r="27" fill="#fff"/>
+        <circle cx="240" cy="148" r="27" fill="#fff"/>
+        <circle class="pupil" cx="160" cy="150" r="12" fill="#2a1140"/>
+        <circle class="pupil" cx="240" cy="150" r="12" fill="#2a1140"/>
+        <circle cx="164" cy="144" r="4" fill="#fff"/>
+        <circle cx="244" cy="144" r="4" fill="#fff"/>
+      </g>
+      <!-- mouth (scaleY driven by JS) -->
+      <g id="mouth">
+        <ellipse cx="200" cy="262" rx="60" ry="40" fill="#3c1856"/>
+        <rect x="172" y="226" width="20" height="16" rx="5" fill="#fff"/>
+        <rect x="208" y="226" width="20" height="16" rx="5" fill="#fff"/>
+        <ellipse cx="200" cy="286" rx="36" ry="16" fill="#ff6b9d"/>
+      </g>
+    </svg>
+    <div id="bubble">🍎</div>
+  </div>
+
+  <div id="tray"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const FOODS = [
+      // Fruits
+      { e: '🍎', n: 'apple' },     { e: '🍌', n: 'banana' },
+      { e: '🍓', n: 'strawberry' },{ e: '🍇', n: 'grapes' },
+      { e: '🍉', n: 'watermelon' },{ e: '🍊', n: 'orange' },
+      { e: '🥭', n: 'mango' },     { e: '🍐', n: 'pear' },
+      { e: '🍑', n: 'peach' },     { e: '🍒', n: 'cherries' },
+      { e: '🍍', n: 'pineapple' }, { e: '🥝', n: 'kiwi' },
+      { e: '🫐', n: 'blueberries' },{ e: '🍋', n: 'lemon' },
+      { e: '🥥', n: 'coconut' },   { e: '🍈', n: 'melon' },
+      // Vegetables
+      { e: '🥕', n: 'carrot' },    { e: '🥦', n: 'broccoli' },
+      { e: '🌽', n: 'corn' },      { e: '🍅', n: 'tomato' },
+      { e: '🥒', n: 'cucumber' },  { e: '🥔', n: 'potato' },
+      { e: '🫑', n: 'pepper' },    { e: '🧅', n: 'onion' },
+      { e: '🥬', n: 'lettuce' },   { e: '🍄', n: 'mushroom' },
+      // A few other treats for variety
+      { e: '🍪', n: 'cookie' },    { e: '🍕', n: 'pizza' },
+      { e: '🧁', n: 'cupcake' },   { e: '🍞', n: 'bread' },
+      { e: '🍔', n: 'burger' },
+    ];
+    const SLOTS = 8;
+
+    const svg = document.getElementById('monster-svg');
+    const mouthG = document.getElementById('mouth');
+    const pupils = [...document.querySelectorAll('.pupil')];
+    const bubble = document.getElementById('bubble');
+
+    let wanted = null;          // food object the monster asked for
+    let mouthOpen = 0.25;       // current scaleY
+    let mouthTarget = 0.25;
+    let chomping = false;
+    let dragPoint = null;       // viewport point of dragged food (for eyes + mouth)
+    let tick = 0;
+
+    // ---- mouth + eyes animation loop ----
+    mouthG.style.transformBox = 'fill-box';
+    mouthG.style.transformOrigin = 'center';
+    function loop() {
+      tick++;
+      if (!chomping) {
+        if (dragPoint) {
+          const m = mouthCenter();
+          const d = Math.hypot(dragPoint.x - m.x, dragPoint.y - m.y);
+          mouthTarget = d > 280 ? 0.3 : Math.max(0.3, Math.min(1, 1 - (d - 90) / 190));
+        } else {
+          mouthTarget = 0.25 + Math.sin(tick / 40) * 0.04; // idle breathing
+        }
+      }
+      mouthOpen += (mouthTarget - mouthOpen) * 0.18;
+      mouthG.style.transform = `scaleY(${mouthOpen.toFixed(3)})`;
+
+      // pupils look at the dragged food (or wander slowly)
+      let dx = Math.sin(tick / 90) * 4, dy = Math.cos(tick / 70) * 3;
+      if (dragPoint) {
+        const r = svg.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height * 0.38;
+        const a = Math.atan2(dragPoint.y - cy, dragPoint.x - cx);
+        dx = Math.cos(a) * 9; dy = Math.sin(a) * 9;
+      }
+      pupils.forEach(p => p.style.transform = `translate(${dx}px, ${dy}px)`);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    function mouthCenter() {
+      const r = mouthG.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
+
+    // ---- sounds ----
+    function playCrunch() {
+      const ctx = KidsAudio.getAudio();
+      for (let i = 0; i < 3; i++) {
+        const t = ctx.currentTime + i * 0.09;
+        const len = ctx.sampleRate * 0.06;
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let j = 0; j < len; j++) d[j] = (Math.random() * 2 - 1) * (1 - j / len);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const f = ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.value = 1200 - i * 250;
+        const g = ctx.createGain();
+        g.gain.value = 0.5;
+        src.connect(f).connect(g).connect(ctx.destination);
+        src.start(t);
+      }
+    }
+    function playBurp() {
+      const ctx = KidsAudio.getAudio();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(55, now + 0.4);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 26;
+      const lfoG = ctx.createGain();
+      lfoG.gain.value = 30;
+      lfo.connect(lfoG).connect(osc.frequency);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.4, now + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.5);
+      lfo.start(now); lfo.stop(now + 0.5);
+    }
+
+    // ---- tray ----
+    const tray = [];   // array of food elements
+    function slotPos(i) {
+      return {
+        x: (i + 0.5) * (window.innerWidth / SLOTS) - 48,
+        y: window.innerHeight - 118,
+      };
+    }
+    function trayNames() { return tray.map(el => el.dataset.name); }
+
+    function spawnFood(i) {
+      const used = trayNames();
+      const f = KidsUtil.rand(FOODS.filter(x => !used.includes(x.n)));
+      const el = document.createElement('div');
+      el.className = 'food home';
+      el.textContent = f.e;
+      el.dataset.name = f.n;
+      const p = slotPos(i);
+      el.style.left = p.x + 'px';
+      el.style.top = p.y + 'px';
+      el.dataset.slot = i;
+      document.body.appendChild(el);
+      makeDraggable(el);
+      tray[i] = el;
+    }
+
+    window.addEventListener('resize', () => {
+      tray.forEach((el, i) => {
+        const p = slotPos(i);
+        el.style.left = p.x + 'px';
+        el.style.top = p.y + 'px';
+      });
+    });
+
+    // ---- asking ----
+    function askForFood() {
+      const el = KidsUtil.rand(tray.filter(Boolean));
+      wanted = el.dataset.name;
+      bubble.textContent = el.textContent;
+      bubble.classList.add('show');
+      KidsAudio.speak(`I'm hungry! Can I have the ${wanted}, please?`);
+    }
+
+    // ---- eating ----
+    function chomp() {
+      chomping = true;
+      let step = 0;
+      const seq = [0.08, 0.7, 0.1, 0.5, 0.15, 0.25];
+      const iv = setInterval(() => {
+        mouthTarget = seq[step++];
+        if (step >= seq.length) { clearInterval(iv); chomping = false; }
+      }, 110);
+    }
+
+    function eat(el) {
+      const name = el.dataset.name;
+      const slot = +el.dataset.slot;
+      el.classList.add('eaten');
+      setTimeout(() => el.remove(), 250);
+      tray[slot] = null;
+      playCrunch();
+      chomp();
+      svg.classList.remove('bounce');
+      void svg.offsetWidth;
+      svg.classList.add('bounce');
+
+      if (name === wanted) {
+        KidsAudio.playChime('yay');
+        setTimeout(() => KidsAudio.speak(`Mmmm! Yummy ${name}! Thank you!`), 350);
+        wanted = null;
+        bubble.classList.remove('show');
+        const burp = Math.random() < 0.35;
+        if (burp) setTimeout(() => { playBurp(); setTimeout(() => KidsAudio.speak('Excuse me!'), 500); }, 1500);
+        setTimeout(askForFood, burp ? 3400 : 2300);
+      } else {
+        setTimeout(() => KidsAudio.speak(`Hee hee, that was the ${name}! Where is my ${wanted}?`), 350);
+      }
+      setTimeout(() => spawnFood(slot), 700);
+    }
+
+    // ---- dragging (same pattern as Color Sorter) ----
+    function makeDraggable(el) {
+      let ox = 0, oy = 0, dragging = false;
+      el.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        el.classList.add('dragging');
+        el.classList.remove('home');
+        const rect = el.getBoundingClientRect();
+        ox = e.clientX - rect.left;
+        oy = e.clientY - rect.top;
+        e.preventDefault();
+
+        const onMove = (ev) => {
+          if (!dragging) return;
+          el.style.left = (ev.clientX - ox) + 'px';
+          el.style.top  = (ev.clientY - oy) + 'px';
+          dragPoint = { x: ev.clientX, y: ev.clientY };
+        };
+        const onUp = (ev) => {
+          if (!dragging) return;
+          dragging = false;
+          dragPoint = null;
+          el.classList.remove('dragging');
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+
+          const m = mouthCenter();
+          if (Math.hypot(ev.clientX - m.x, ev.clientY - m.y) < 100) {
+            eat(el);
+          } else {
+            el.classList.add('home');
+            const p = slotPos(+el.dataset.slot);
+            el.style.left = p.x + 'px';
+            el.style.top = p.y + 'px';
+          }
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      });
+    }
+
+    // ---- start ----
+    for (let i = 0; i < SLOTS; i++) spawnFood(i);
+    // Audio needs a first tap; ask once the child touches anything.
+    window.addEventListener('pointerdown', () => { if (!wanted) askForFood(); }, { once: true });
+    setTimeout(() => { if (!wanted) askForFood(); }, 800);
+  </script>
+</body>
+</html>

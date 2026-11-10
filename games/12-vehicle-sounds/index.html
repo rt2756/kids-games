@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Vehicle Sounds</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #355c7d 0%, #6c5b7b 50%, #c06c84 100%);
+    min-height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    font-size: clamp(26px, 4.5vw, 42px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 16px 0 8px;
+  }
+  #grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 12px;
+    padding: 10px 14px 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+    align-content: center;
+    overflow-y: auto;
+  }
+  .card {
+    background: rgba(255,255,255,0.92);
+    border-radius: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 6px;
+    cursor: pointer;
+    user-select: none;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+    transition: transform 0.1s;
+  }
+  .card:active { transform: scale(0.93); }
+  .card .emoji { font-size: clamp(48px, 9vw, 74px); line-height: 1.15; }
+  .card .name {
+    font-size: clamp(14px, 2.2vw, 19px);
+    font-weight: 800;
+    color: #444;
+    margin-top: 4px;
+  }
+  .card.playing { animation: jiggle 0.5s ease; }
+  @keyframes jiggle {
+    0%,100% { transform: rotate(0); }
+    25%     { transform: rotate(-5deg) scale(1.08); }
+    75%     { transform: rotate(5deg)  scale(1.08); }
+  }
+  .zoomer {
+    position: fixed;
+    left: 0;
+    font-size: clamp(80px, 16vw, 140px);
+    z-index: 200;
+    pointer-events: none;
+    user-select: none;
+    filter: drop-shadow(0 10px 14px rgba(0,0,0,0.3));
+  }
+
+  /* Small screens (phones): keep everything on screen and clear of the back button. */
+  #grid { min-height: 0; }
+  @media (max-width: 520px) {
+    h1 { font-size: 22px; margin: 84px 0 4px; }
+    #grid { align-content: start; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .card { padding: 10px 4px; }
+  }
+</style>
+</head>
+<body>
+  <h1>Tap a vehicle! 🚗</h1>
+  <div id="grid"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // ----- tiny synth helpers -----
+    const ctx = () => KidsAudio.getAudio();
+    function tone({ type = 'sine', from, to, t0 = 0, dur, vol = 0.25 }) {
+      const ac = ctx(), now = ac.currentTime + t0;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(from, now);
+      if (to && to !== from) o.frequency.exponentialRampToValueAtTime(to, now + dur);
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(vol, now + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      o.connect(g).connect(ac.destination);
+      o.start(now); o.stop(now + dur + 0.05);
+    }
+    function noise({ t0 = 0, dur, vol = 0.3, filter = 1000, type = 'lowpass', sweepTo }) {
+      const ac = ctx(), now = ac.currentTime + t0;
+      const len = Math.floor(ac.sampleRate * dur);
+      const buf = ac.createBuffer(1, len, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      const f = ac.createBiquadFilter();
+      f.type = type;
+      f.frequency.setValueAtTime(filter, now);
+      if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, now + dur);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(vol, now + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      src.connect(f).connect(g).connect(ac.destination);
+      src.start(now);
+      return { src, f, g, now };
+    }
+    function chopper({ dur = 1.6 }) {
+      const ac = ctx();
+      const { g, now } = noise({ dur, vol: 0.0001, filter: 700 });
+      // re-shape gain with a chop LFO
+      g.gain.cancelScheduledValues(now);
+      const lfo = ac.createOscillator(), lg = ac.createGain();
+      lfo.type = 'square'; lfo.frequency.value = 13;
+      lg.gain.value = 0.22;
+      g.gain.value = 0.22;
+      lfo.connect(lg).connect(g.gain);
+      lfo.start(now); lfo.stop(now + dur);
+    }
+
+    const VEHICLES = [
+      { e: '🚗', n: 'Car',         say: 'Vroom vroom! A car!',
+        s: () => { tone({ type: 'sawtooth', from: 70, to: 250, dur: 1.1, vol: 0.3 });
+                   noise({ dur: 1.1, vol: 0.12, filter: 400, sweepTo: 1400 }); } },
+      { e: '🚌', n: 'Bus',         say: 'Beep beep! The bus!',
+        s: () => { [0, 0.35].forEach(t0 => { tone({ type: 'square', from: 330, dur: 0.22, t0, vol: 0.2 });
+                                             tone({ type: 'square', from: 415, dur: 0.22, t0, vol: 0.2 }); }); } },
+      { e: '🚂', n: 'Train',       say: 'Choo choo! The train!',
+        s: () => { [0, 0.2, 0.4, 0.6].forEach(t0 => noise({ t0, dur: 0.14, vol: 0.35, filter: 900 }));
+                   tone({ from: 880,  dur: 0.7, t0: 0.85, vol: 0.18 });
+                   tone({ from: 1108, dur: 0.7, t0: 0.85, vol: 0.18 }); } },
+      { e: '✈️', n: 'Plane',       say: 'Whoosh! The plane flies high!',
+        s: () => noise({ dur: 1.7, vol: 0.35, type: 'bandpass', filter: 350, sweepTo: 2600 }) },
+      { e: '🚁', n: 'Helicopter',  say: 'The helicopter!',
+        s: () => chopper({}) },
+      { e: '🚒', n: 'Fire Truck',  say: 'The fire truck! Nee naw nee naw!',
+        s: () => { for (let i = 0; i < 5; i++) tone({ type: 'square', from: i % 2 ? 650 : 900, dur: 0.26, t0: i * 0.28, vol: 0.14 }); } },
+      { e: '🚓', n: 'Police Car',  say: 'The police car!',
+        s: () => { for (let i = 0; i < 3; i++) { tone({ from: 620, to: 1250, dur: 0.32, t0: i * 0.64, vol: 0.16 });
+                                                 tone({ from: 1250, to: 620, dur: 0.32, t0: i * 0.64 + 0.32, vol: 0.16 }); } } },
+      { e: '🚑', n: 'Ambulance',   say: 'The ambulance!',
+        s: () => { for (let i = 0; i < 4; i++) tone({ from: i % 2 ? 750 : 950, dur: 0.38, t0: i * 0.4, vol: 0.15 }); } },
+      { e: '🚜', n: 'Tractor',     say: 'Putt putt putt! The tractor!',
+        s: () => { for (let i = 0; i < 10; i++) tone({ type: 'square', from: 75 + (i % 3) * 8, dur: 0.09, t0: i * 0.13, vol: 0.3 }); } },
+      { e: '🚢', n: 'Boat',        say: 'The big boat!',
+        s: () => { tone({ type: 'square', from: 100, dur: 1.3, vol: 0.18 });
+                   tone({ from: 80, dur: 1.3, vol: 0.25 }); } },
+      { e: '🏍️', n: 'Motorbike',   say: 'The motorbike!',
+        s: () => { tone({ type: 'sawtooth', from: 60, to: 330, dur: 0.35, vol: 0.3 });
+                   tone({ type: 'sawtooth', from: 80, to: 380, dur: 0.5, t0: 0.45, vol: 0.3 }); } },
+      { e: '🚲', n: 'Bicycle',     say: 'Ring ring! The bicycle!',
+        s: () => { [0, 0.25].forEach(t0 => { tone({ from: 1900, dur: 0.4, t0, vol: 0.2 });
+                                             tone({ from: 2450, dur: 0.3, t0, vol: 0.1 }); }); } },
+    ];
+
+    const grid = document.getElementById('grid');
+    VEHICLES.forEach(v => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<div class="emoji">${v.e}</div><div class="name">${v.n}</div>`;
+      card.addEventListener('pointerdown', () => {
+        card.classList.remove('playing');
+        void card.offsetWidth;
+        card.classList.add('playing');
+        KidsAudio.speak(v.say);
+        setTimeout(v.s, 50);
+        zoom(v);
+      });
+      grid.appendChild(card);
+    });
+
+    // Apple's vehicle emojis face left, so they zoom right-to-left.
+    let zoomers = 0;
+    function zoom(v) {
+      if (zoomers >= 3) return;
+      zoomers++;
+      const el = document.createElement('div');
+      el.className = 'zoomer';
+      el.textContent = v.e;
+      const flying = v.n === 'Plane' || v.n === 'Helicopter';
+      const y = flying ? 12 + Math.random() * 20 : 35 + Math.random() * 40;
+      el.style.top = y + 'vh';
+      document.body.appendChild(el);
+      const anim = el.animate(
+        [
+          { transform: 'translateX(110vw)' },
+          { transform: `translateX(-30vw) translateY(${flying ? '-12vh' : '0'})` },
+        ],
+        { duration: v.n === 'Bicycle' || v.n === 'Tractor' ? 3000 : 1900, easing: 'ease-in-out' }
+      );
+      anim.onfinish = () => { el.remove(); zoomers--; };
+    }
+  </script>
+</body>
+</html>

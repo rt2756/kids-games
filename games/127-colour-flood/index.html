@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Colour Flood</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+
+<style>
+  body { --av-bg: linear-gradient(180deg,#232526,#414345); --av-ink: #fff; }
+    .board { display:grid; border-radius:10px; overflow:hidden; box-shadow:0 6px 18px rgba(0,0,0,.35); }
+    .sq { border:none; padding:0; cursor:pointer; font-size:inherit; line-height:1; transition:background .18s; }
+    .chip { width:clamp(44px,11vmin,64px); height:clamp(44px,11vmin,64px); border-radius:50%; border:4px solid #fff; cursor:pointer;
+      box-shadow:0 5px 0 rgba(0,0,0,.3); }
+    .chip:disabled { opacity:.3; cursor:default; }
+    .chip.hint { box-shadow:0 0 0 6px #ffd93b; animation:av-pulse .8s ease-in-out infinite; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+
+  <script>
+    // Concept: planning + counting moves. The corner blob takes the colour you
+    // pick and swallows every touching square of that colour. Fill the board
+    // before the moves run out. The move limit comes from a greedy solver, so
+    // it is always reachable.
+    const K = KidsKit, A = KidsAudio;
+    const COL = [['red', '#ef4444'], ['yellow', '#facc15'], ['blue', '#3b82f6'], ['green', '#22c55e'], ['purple', '#a855f7'], ['orange', '#fb923c']];
+    const INTRO = 'Make the whole board one colour. The star corner spreads to every square it touches. Pick a colour!';
+    const ui = K.setup();
+    const sub = K.el('div', 'av-sub av-hint', INTRO), fit = K.el('div', 'av-fit'), board = K.el('div', 'board'), pal = K.el('div', 'av-bar'), bar = K.el('div', 'av-bar');
+    fit.appendChild(board); ui.stage.classList.add('av-puzzle'); ui.stage.append(sub, fit, pal, bar);
+    sub.onclick = () => { K.wake(); K.say(INTRO); };
+    let N, C, g, init, limit, moves, locked, timer, first = true, nodes = [], chips = [];
+    const mk = (label, fn) => { const b = K.el('button', 'av-btn', label); b.onclick = () => { K.wake(); fn(); }; bar.appendChild(b); };
+    mk('🔄 Again', () => set(init));
+    mk('💡 Hint', () => { if (!locked) chips[best(g)].classList.add('hint'); });
+
+    function blob(grid) {
+      const c = grid[0], inb = new Set([0]), q = [0];
+      while (q.length) {
+        const i = q.pop(), x = i % N, y = Math.floor(i / N);
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+          const a = x + dx, b = y + dy, j = b * N + a;
+          if (a >= 0 && a < N && b >= 0 && b < N && !inb.has(j) && grid[j] === c) { inb.add(j); q.push(j); }
+        });
+      }
+      return inb;
+    }
+    const paint = (grid, c) => { blob(grid).forEach(i => { grid[i] = c; }); };
+    function best(grid) {                            // the colour that grows the blob most
+      let top = -1, pick = 0;
+      for (let c = 0; c < C; c++) {
+        if (c === grid[0]) continue;
+        const t = grid.slice(); paint(t, c);
+        const s = blob(t).size;
+        if (s > top) { top = s; pick = c; }
+      }
+      return pick;
+    }
+    function size() {
+      const s = Math.floor(Math.min(fit.clientWidth / N, fit.clientHeight / N, 110));
+      board.style.width = board.style.height = s * N + 'px';
+      board.style.gridTemplateColumns = board.style.gridTemplateRows = 'repeat(' + N + ', 1fr)';
+      board.style.fontSize = Math.round(s * .55) + 'px';
+    }
+    function draw() {
+      nodes.forEach((b, i) => { b.style.background = COL[g[i]][1]; });
+      chips.forEach((b, c) => { b.classList.remove('hint'); b.disabled = c === g[0]; });
+      sub.textContent = 'Moves left: ' + (limit - moves);
+    }
+    function set(grid) {
+      clearTimeout(timer);
+      init = grid.slice(); g = grid.slice(); moves = 0; locked = false;
+      board.innerHTML = ''; pal.innerHTML = ''; nodes = []; chips = [];
+      for (let i = 0; i < N * N; i++) {
+        const b = K.el('button', 'sq', i ? '' : '⭐');
+        b.onclick = () => pick(g[i]);
+        nodes.push(b); board.appendChild(b);
+      }
+      for (let c = 0; c < C; c++) {
+        const b = K.el('button', 'chip');
+        b.style.background = COL[c][1]; b.setAttribute('aria-label', COL[c][0]);
+        b.onclick = () => pick(c);
+        chips.push(b); pal.appendChild(b);
+      }
+      draw(); size();
+    }
+    function pick(c) {
+      if (locked || c === g[0]) return;
+      K.wake(); paint(g, c); moves++; A.playPop(); draw();
+      if (blob(g).size === N * N) {
+        locked = true; K.star(); A.playChime('yay'); K.confetti();
+        const line = 'All ' + COL[c][0] + '! You did it in ' + moves + ' moves.';
+        K.say(line); timer = setTimeout(() => L.win(), K.speakMs(line) + 900);
+      } else if (moves >= limit) {
+        locked = true; A.playChime('uhoh');
+        const line = 'Out of moves. Let us try that board again!';
+        K.say(line); timer = setTimeout(() => set(init), K.speakMs(line) + 400);
+      }
+    }
+    const L = K.levels('colour-flood', ui, n => {
+      [N, C] = [[4, 3], [5, 3], [6, 3], [6, 4], [8, 4], [8, 5], [10, 5], [10, 6], [12, 6]][Math.min(n, 8)];
+      let grid;
+      do { grid = []; for (let i = 0; i < N * N; i++) grid.push(Math.floor(Math.random() * C)); } while (blob(grid).size > N);
+      const t = grid.slice(); let par = 0;
+      while (blob(t).size < N * N) { paint(t, best(t)); par++; }
+      limit = par + (n < 3 ? 2 : 1);
+      set(grid);
+      K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

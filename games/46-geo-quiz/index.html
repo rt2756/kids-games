@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Geo Quiz</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #1d976c 0%, #2193b0 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0a3a2a 0%, #0e3a46 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #q { color:#fff; font-weight:900; font-size:clamp(22px,6vw,38px); margin:8px 16px; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #flag { font-size:clamp(60px,18vw,110px); line-height:1; margin:2px 0; }
+  #choices { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; width:min(92vw,560px); padding:8px 12px; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#13796a; font-weight:900; cursor:pointer;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice.flagc { font-size:clamp(50px,14vw,84px); padding:10px 18px; }
+  .choice.textc { font-size:clamp(18px,4.8vw,26px); padding:16px 22px; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>🌍 Geo Quiz</h1>
+  <div id="q"></div>
+  <div id="flag"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const C=[
+      {n:'India',f:'🇮🇳',cap:'New Delhi'},{n:'France',f:'🇫🇷',cap:'Paris'},{n:'Japan',f:'🇯🇵',cap:'Tokyo'},
+      {n:'the USA',f:'🇺🇸',cap:'Washington'},{n:'the UK',f:'🇬🇧',cap:'London'},{n:'Italy',f:'🇮🇹',cap:'Rome'},
+      {n:'Brazil',f:'🇧🇷',cap:'Brasília'},{n:'Egypt',f:'🇪🇬',cap:'Cairo'},{n:'Canada',f:'🇨🇦',cap:'Ottawa'},
+      {n:'Australia',f:'🇦🇺',cap:'Canberra'},{n:'China',f:'🇨🇳',cap:'Beijing'},{n:'Germany',f:'🇩🇪',cap:'Berlin'},
+    ];
+    const qEl=document.getElementById('q'), flagEl=document.getElementById('flag'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function newRound(){
+      locked=false; choicesEl.innerHTML='';
+      const country=KidsUtil.rand(C);
+      const flagMode=Math.random()<0.5;
+      if(flagMode){
+        qEl.textContent='Which flag is '+country.n+'?'; flagEl.textContent='';
+        answer=country.f;
+        const opts=new Set([country.f]); while(opts.size<3) opts.add(KidsUtil.rand(C).f);
+        KidsUtil.shuffle([...opts]).forEach(f=>{ const b=document.createElement('button'); b.className='choice flagc'; b.textContent=f; b.onclick=()=>pick(f,b); choicesEl.appendChild(b); });
+      } else {
+        qEl.textContent='Capital of '+country.n+'?'; flagEl.textContent=country.f;
+        answer=country.cap;
+        const opts=new Set([country.cap]); while(opts.size<3) opts.add(KidsUtil.rand(C).cap);
+        KidsUtil.shuffle([...opts]).forEach(cap=>{ const b=document.createElement('button'); b.className='choice textc'; b.textContent=cap; b.onclick=()=>pick(cap,b); choicesEl.appendChild(b); });
+      }
+      KidsAudio.speak(qEl.textContent);
+    }
+
+    function pick(v,b){
+      if(locked) return; locked=true; try{KidsAudio.getAudio();}catch(e){}
+      if(v===answer){ b.classList.add('right'); score++; scoreEl.textContent='⭐ '+score;
+        KidsAudio.playChime('yay'); KidsAudio.speak('Correct!'); confetti(); setTimeout(newRound,1700);
+      } else { b.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        [...choicesEl.children].forEach(x=>{ if(x.textContent===answer) x.classList.add('right'); });
+        KidsAudio.speak('The answer is '+answer); setTimeout(newRound,2100); }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌍','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

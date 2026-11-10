@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Treasure Grid</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#f6e7c1,#e0b97a); --av-ink: #5a3a10; }
+  .board { display:grid; grid-template-columns:26px repeat(6, 1fr); gap:4px; width:min(92vw, 52vh, 440px); }
+  .cell { aspect-ratio:1; border:none; border-radius:8px; background:#fff8e1; font-size:clamp(16px,4.6vmin,28px); cursor:pointer; padding:0;
+    box-shadow:inset 0 -3px 0 rgba(0,0,0,.12); font-family:inherit; }
+  .cell.found { background:#b6f09c; } .cell.miss { background:#ffcdd2; color:#b71c1c; }
+  .lab { display:flex; align-items:center; justify-content:center; font-weight:900; font-size:15px; }
+  .axis { font-weight:800; font-size:13px; opacity:.8; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: coordinates — (across, up). The classic slip, swapping the two,
+    // is always offered as a wrong answer in "Read it" mode.
+    const K = KidsKit, U = KidsUtil, A = KidsAudio;
+    const N = 6, rnd = () => 1 + Math.floor(Math.random() * N);
+    const ui = K.setup();
+    const modes = K.el('div', 'av-modes'), board = K.el('div', 'board'), row = K.el('div', 'av-choices');
+    ui.stage.append(modes, board, K.el('div', 'axis', 'across → first, then up ↑'), row);
+    const cells = {};
+    let mode = 'dig', tx = 0, ty = 0, locked = false, timer = null;
+
+    for (let y = N; y >= 1; y--) {
+      board.appendChild(K.el('div', 'lab', y));
+      for (let x = 1; x <= N; x++) {
+        const c = cells[x + ',' + y] = K.el('button', 'cell');
+        c.onclick = () => dig(x, y, c);
+        board.appendChild(c);
+      }
+    }
+    board.appendChild(K.el('div', 'lab', ''));
+    for (let x = 1; x <= N; x++) board.appendChild(K.el('div', 'lab', x));
+
+    [['dig', '⛏️ Dig it'], ['read', '👀 Read it']].forEach(([id, label], i) => {
+      const b = K.el('button', 'av-btn' + (i ? '' : ' on'), label);
+      b.onclick = () => { mode = id; modes.querySelectorAll('.av-btn').forEach(x => x.classList.toggle('on', x === b)); clearTimeout(timer); newRound(); };
+      modes.appendChild(b);
+    });
+
+    function newRound() {
+      locked = false; row.innerHTML = '';
+      Object.values(cells).forEach(c => { c.textContent = ''; c.className = 'cell'; });
+      let x, y; do { x = rnd(); y = rnd(); } while ((x === tx && y === ty) || x === y);   // x ≠ y so order matters
+      tx = x; ty = y;
+      if (mode === 'dig') {
+        ui.setTitle('Dig for treasure at <b>(' + tx + ', ' + ty + ')</b>');
+        K.say('Dig at ' + tx + ' comma ' + ty + '. Go ' + tx + ' across, then ' + ty + ' up.');
+      } else {
+        cells[tx + ',' + ty].textContent = '💎';
+        ui.setTitle('Where is the treasure?');
+        K.say('Where is the treasure? Read across first, then up.');
+        const opts = [[tx, ty], [ty, tx]];
+        while (opts.length < 3) { const o = [rnd(), rnd()]; if (!opts.some(p => p[0] === o[0] && p[1] === o[1])) opts.push(o); }
+        U.shuffle(opts).forEach(o => {
+          const b = K.el('button', 'av-btn', '(' + o[0] + ', ' + o[1] + ')');
+          b.onclick = () => {
+            if (locked) return;
+            K.wake();
+            if (o[0] === tx && o[1] === ty) win();
+            else { K.wrong(b); K.say(o[0] === ty && o[1] === tx ? 'Careful! Across comes first, then up.' : 'Not quite. Count across, then count up.'); }
+          };
+          row.appendChild(b);
+        });
+      }
+    }
+    function win() {
+      locked = true; K.star(); A.playChime('yay'); K.confetti();
+      cells[tx + ',' + ty].classList.add('found');
+      const line = 'Yes! ' + tx + ' across and ' + ty + ' up.';
+      K.say(line); timer = setTimeout(newRound, K.speakMs(line) + 600);
+    }
+    function dig(x, y, c) {
+      if (locked || mode !== 'dig') return;
+      K.wake();
+      if (x === tx && y === ty) { c.textContent = '💎'; win(); return; }
+      c.textContent = '✖'; c.classList.add('miss'); K.wrong(c);
+      K.say('That is ' + x + ' comma ' + y + '. Go across first, then up.');
+      setTimeout(() => { if (c.textContent === '✖') { c.textContent = ''; c.classList.remove('miss'); } }, 1300);
+    }
+    ui.titleEl.onclick = () => { K.wake(); K.say(mode === 'dig' ? 'Dig at ' + tx + ' comma ' + ty + '.' : 'Where is the treasure?'); };
+    newRound();
+  </script>
+</body>
+</html>

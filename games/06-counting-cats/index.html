@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Counting Cats</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #89f7fe 0%, #66a6ff 100%);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    font-size: clamp(28px, 4.5vw, 44px);
+    font-weight: 900;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 20px 0;
+  }
+
+  #pond {
+    flex: 1;
+    width: 90%;
+    max-width: 800px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+    border: 6px solid rgba(255,255,255,0.6);
+    border-radius: 50% / 20%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 40px;
+    margin-bottom: 20px;
+  }
+  .cat {
+    font-size: clamp(70px, 12vw, 120px);
+    animation: bob 1.8s ease-in-out infinite;
+    display: inline-block;
+    user-select: none;
+  }
+  .cat:nth-child(2n) { animation-delay: 0.4s; }
+  .cat:nth-child(3n) { animation-delay: 0.8s; }
+  @keyframes bob {
+    0%,100% { transform: translateY(0) rotate(-5deg); }
+    50%     { transform: translateY(-10px) rotate(5deg); }
+  }
+  .cat.waddle { animation: waddle-off 1s ease-in forwards; }
+  @keyframes waddle-off {
+    0%   { transform: translateX(0); opacity: 1; }
+    100% { transform: translateX(200px) rotate(20deg); opacity: 0; }
+  }
+
+  #numbers {
+    display: flex;
+    gap: 16px;
+    padding: 20px 10px 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .num-btn {
+    width: 100px;
+    height: 100px;
+    border-radius: 25px;
+    background: white;
+    color: #1e3a8a;
+    font-size: 58px;
+    font-weight: 900;
+    border: 6px solid rgba(30,58,138,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.2);
+    user-select: none;
+    transition: transform 0.08s;
+  }
+  .num-btn:active { transform: translateY(4px); box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+  .num-btn.wrong { animation: shake 0.4s; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25%     { transform: translateX(-12px); }
+    75%     { transform: translateX(12px); }
+  }
+
+  /* Small screens (phones): keep everything on screen and clear of the back button. */
+  @media (max-width: 520px), (max-height: 700px) {
+    h1 { font-size: 24px; margin: 84px 0 8px; }
+    #pond { padding: 14px; gap: 8px; min-height: 0; margin-bottom: 8px; }
+    .cat { font-size: clamp(40px, 11vw, 70px); }
+    #numbers { gap: 10px; padding: 8px 8px 16px; }
+    .num-btn { width: 62px; height: 62px; font-size: 36px; border-radius: 18px; border-width: 4px; }
+  }
+</style>
+</head>
+<body>
+  <h1>How many cats?</h1>
+  <div id="pond"></div>
+  <div id="numbers"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const pond = document.getElementById('pond');
+    const numbers = document.getElementById('numbers');
+    let answer = 0;
+    let locked = false;
+
+    function newRound() {
+      locked = false;
+      pond.innerHTML = '';
+      answer = 1 + Math.floor(Math.random() * 5); // 1..5
+      for (let i = 0; i < answer; i++) {
+        const d = document.createElement('div');
+        d.className = 'cat';
+        d.textContent = '🐱';
+        pond.appendChild(d);
+      }
+      KidsAudio.speak('How many cats?');
+    }
+
+    function handleChoice(n, btn) {
+      if (locked) return;
+      if (n === answer) {
+        locked = true;
+        KidsAudio.playChime('yay');
+        KidsAudio.speak(`Yes! ${n}!`);
+        // Cats scamper off
+        pond.querySelectorAll('.cat').forEach((d, i) => {
+          setTimeout(() => d.classList.add('waddle'), i * 120);
+        });
+        setTimeout(newRound, 1800);
+      } else {
+        btn.classList.add('wrong');
+        KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Try again');
+        setTimeout(() => btn.classList.remove('wrong'), 400);
+      }
+    }
+
+    // Build 1-5 number buttons
+    for (let n = 1; n <= 5; n++) {
+      const btn = document.createElement('div');
+      btn.className = 'num-btn';
+      btn.textContent = n;
+      const tap = (e) => { e.preventDefault(); handleChoice(n, btn); };
+      btn.addEventListener('click', tap);
+      btn.addEventListener('touchstart', tap, { passive: false });
+      numbers.appendChild(btn);
+    }
+
+    newRound();
+  </script>
+</body>
+</html>

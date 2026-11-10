@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Festivals of India</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #f857a6 0%, #ff5858 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a162a 0%, #3a1616 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.6vw,28px); margin:0; position:fixed; top:94px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #cue { font-size:clamp(90px,26vw,170px); line-height:1; margin:6px 0; }
+  #q { color:#fff; font-weight:800; font-size:clamp(18px,4.8vw,26px); margin-bottom:8px; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #choices { display:flex; flex-direction:column; gap:12px; width:min(86vw,420px); padding:0 12px; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#d63384; font-weight:900; font-size:clamp(20px,5.4vw,28px);
+    padding:15px; cursor:pointer; box-shadow:0 7px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; background:#ffd6e8; }
+  .choice.right { background:#b6f09c; color:#2d7a00; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Which festival is this?</h1>
+  <div id="cue"></div>
+  <div id="q"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const FEST=[
+      { e:'🪔', n:'Diwali',   d:'the festival of lights' },
+      { e:'🎨', n:'Holi',     d:'the festival of colours' },
+      { e:'🌙', n:'Eid',      d:'when we see the moon and share sweets' },
+      { e:'🎄', n:'Christmas', d:'when we decorate a tree' },
+      { e:'🪁', n:'Sankranti', d:'when we fly kites' },
+      { e:'🧵', n:'Rakhi',    d:'when sisters tie a thread on brothers' },
+    ];
+    const cueEl=document.getElementById('cue'), qEl=document.getElementById('q'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let cur, score=0, locked=false;
+    function newRound(){
+      locked=false; cur=KidsUtil.rand(FEST);
+      cueEl.textContent=cur.e; qEl.textContent=cur.d;
+      const others=KidsUtil.shuffle(FEST.filter(f=>f.n!==cur.n)).slice(0,2);
+      choicesEl.innerHTML='';
+      KidsUtil.shuffle([cur,...others]).forEach(f=>{ const b=document.createElement('button'); b.className='choice'; b.textContent=f.n; b.onclick=()=>pick(f,b); choicesEl.appendChild(b); });
+      KidsAudio.speak('Which festival is '+cur.d+'?');
+    }
+    function pick(f,b){
+      if(locked) return; locked=true; try{KidsAudio.getAudio();}catch(e){}
+      if(f.n===cur.n){ b.classList.add('right'); score++; scoreEl.textContent='⭐ '+score; KidsAudio.playChime('yay'); KidsAudio.speak('Yes! '+cur.n+'!'); confetti(); setTimeout(newRound,1900);
+      } else { b.classList.add('wrong'); KidsAudio.playChime('uhoh'); [...choicesEl.children].forEach(x=>{ if(x.textContent===cur.n) x.classList.add('right'); }); KidsAudio.speak('This is '+cur.n+'.'); setTimeout(newRound,2100); }
+    }
+    function confetti(){ for(let i=0;i<24;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🪔','🎈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

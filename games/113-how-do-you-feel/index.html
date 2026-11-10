@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>How Do You Feel?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#ffe0ec,#ffd3a5); --av-ink: #7a3050; }
+  .scene { max-width:min(92vw,560px); }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: naming emotions — match an everyday moment to the feeling it brings.
+    const K = KidsKit, U = KidsUtil;
+    const FACES = { happy: '😊', sad: '😢', angry: '😠', scared: '😨', sleepy: '😴', surprised: '😲' };
+    // [emoji, what happens, feeling, two feelings that clearly do not fit]
+    const SCENES = [
+      ['🎁','You get a present!','happy',['sad','angry']], ['🍦','Your ice cream falls on the ground.','sad',['happy','sleepy']],
+      ['⛈️','You hear very loud thunder.','scared',['happy','sleepy']], ['🧸','Someone snatches your toy.','angry',['happy','sleepy']],
+      ['🛏️','It is very late at night.','sleepy',['angry','surprised']], ['🎂','It is your birthday party!','happy',['sad','scared']],
+      ['🩹','You fall and hurt your knee.','sad',['happy','sleepy']], ['🐕','A big dog barks loudly at you.','scared',['happy','sleepy']],
+      ['🎈','Your balloon goes pop!','surprised',['sleepy','happy']], ['🤗','Mummy gives you a big hug.','happy',['angry','scared']],
+      ['🧱','Someone knocks down your tower.','angry',['happy','sleepy']], ['🌙','You played all day long.','sleepy',['angry','scared']],
+      ['👋','Your friend has to go home.','sad',['scared','surprised']], ['🎩','A rabbit jumps out of a hat!','surprised',['sad','angry']],
+      ['🛝','You go to the park to play.','happy',['sad','angry']], ['🌑','The room is very dark.','scared',['happy','surprised']],
+    ];
+    const draw = K.bag(SCENES);
+    K.quiz({ title: 'How would you feel?', next() {
+      const s = draw();
+      return {
+        show: '<div class="av-big">' + s[0] + '</div><div class="av-word scene" style="font-size:clamp(18px,4.6vmin,30px)">' + s[1] + '</div>',
+        say: s[1] + ' How would you feel?',
+        choices: U.shuffle([s[2]].concat(s[3])).map(f => ({ html: K.card(FACES[f], f), ok: f === s[2],
+          say: 'That face is ' + f + '. ' + s[1] + ' How would you feel?' })),
+        praise: 'Yes. You would feel ' + s[2] + '.',
+      };
+    } });
+  </script>
+</body>
+</html>

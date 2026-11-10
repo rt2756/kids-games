@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Rhyme Time</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #a18cd1 0%, #fbc2eb 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #2a1e4e 0%, #4e2a44 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #prompt { display:flex; flex-direction:column; align-items:center; }
+  #bigEmoji { font-size:clamp(70px,18vw,110px); line-height:1; }
+  #bigWord { color:#fff; font-weight:900; font-size:clamp(30px,8vw,50px); text-transform:uppercase; letter-spacing:3px; text-shadow:2px 2px 0 rgba(0,0,0,.2); }
+  #choices { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; padding:18px 12px; }
+  .choice { border:none; border-radius:18px; background:#fff; color:#5e35b1; font-weight:900; cursor:pointer;
+    box-shadow:0 7px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 22px; }
+  .choice .ce { font-size:clamp(40px,11vw,64px); line-height:1; }
+  .choice .cw { font-size:clamp(15px,4vw,20px); text-transform:uppercase; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Which word rhymes?</h1>
+  <div id="prompt"><div id="bigEmoji"></div><div id="bigWord"></div></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // Rhyme families: words that sound alike at the end. Each word has an emoji.
+    const FAMILIES=[
+      [['cat','🐱'],['hat','🎩'],['bat','🦇'],['rat','🐀']],
+      [['dog','🐶'],['frog','🐸'],['log','🪵']],
+      [['sun','☀️'],['bun','🥯'],['run','🏃']],
+      [['cake','🎂'],['snake','🐍']],
+      [['star','⭐'],['car','🚗'],['jar','🫙']],
+      [['house','🏠'],['mouse','🐭']],
+      [['king','🤴'],['ring','💍'],['swing','🛝']],
+      [['goat','🐐'],['boat','⛵'],['coat','🧥']],
+      [['bear','🐻'],['pear','🍐'],['chair','🪑']],
+      [['moon','🌙'],['spoon','🥄'],['balloon','🎈']],
+      [['tree','🌳'],['bee','🐝'],['key','🔑']],
+      [['fox','🦊'],['box','📦'],['socks','🧦']],
+    ];
+    const bigEmoji=document.getElementById('bigEmoji'), bigWord=document.getElementById('bigWord'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, promptWord, score=0, locked=false;
+
+    function newRound(){
+      locked=false; choicesEl.innerHTML='';
+      const fam=KidsUtil.rand(FAMILIES);
+      const [pw,pe]=fam[0];
+      const rhymes=fam.slice(1);
+      const [aw,ae]=KidsUtil.rand(rhymes);
+      promptWord=pw; answer=aw;
+      bigEmoji.textContent=pe; bigWord.textContent=pw;
+      const opts=[[aw,ae]];
+      while(opts.length<3){
+        const other=KidsUtil.rand(FAMILIES);
+        if(other===fam) continue;
+        const [w,e]=KidsUtil.rand(other);
+        if(!opts.some(o=>o[0]===w)) opts.push([w,e]);
+      }
+      KidsUtil.shuffle(opts).forEach(([w,e])=>{
+        const b=document.createElement('button'); b.className='choice';
+        b.innerHTML='<span class="ce">'+e+'</span><span class="cw">'+w+'</span>';
+        b.onclick=()=>pick(w,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('Which word rhymes with '+pw+'?');
+    }
+    function pick(w,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(w===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        KidsAudio.speak(promptWord+' and '+answer+' rhyme! '+promptWord+', '+answer+'!');
+        confetti(); setTimeout(newRound,2300);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak(promptWord+', '+w+'. That does not rhyme. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

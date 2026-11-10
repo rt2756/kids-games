@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Human Body</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #d31027 0%, #ea384d 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #40060e 0%, #4a1018 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #q { color:#fff; font-weight:900; font-size:clamp(20px,5.5vw,32px); text-align:center; padding:0 16px; margin-bottom:18px; text-shadow:2px 2px 0 rgba(0,0,0,.2); max-width:600px; }
+  #choices { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; padding:0 12px; }
+  .choice { border:none; border-radius:18px; background:#fff; cursor:pointer; font-family:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 22px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; }
+  .choice .ce { font-size:clamp(40px,11vw,62px); line-height:1; }
+  .choice .cw { font-weight:900; font-size:clamp(14px,3.8vw,18px); color:#b71c1c; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Amazing body quiz!</h1>
+  <div id="q"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // [emoji, name, what it does (question), fun fact for the win line]
+    const PARTS=[
+      ['🫀','heart','pumps blood all around your body','It beats about 100,000 times every day'],
+      ['🫁','lungs','fill with air when you breathe','You take about 20,000 breaths a day'],
+      ['🧠','brain','thinks, remembers, and controls your body','It works even while you sleep'],
+      ['🍲','stomach','mixes and digests your food','It growls when it is empty'],
+      ['🦴','bones','hold your body up like a frame','You have 206 of them'],
+      ['💪','muscles','pull on bones so you can move','You have over 600 muscles'],
+      ['👀','eyes','see the world around you','They blink about 15 times a minute'],
+      ['👂','ears','hear sounds big and small','They also help you balance'],
+      ['👅','tongue','tastes your food','It can taste sweet, salty, sour, and bitter'],
+      ['🧴','skin','covers and protects your whole body','It is your body’s biggest organ'],
+      ['🫘','kidneys','clean your blood','They make sure waste leaves your body'],
+      ['🦷','teeth','bite and chew your food','Your adult set has 32 teeth'],
+    ];
+    const qEl=document.getElementById('q'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function newRound(){
+      locked=false; choicesEl.innerHTML='';
+      const part=KidsUtil.rand(PARTS);
+      answer=part[1];
+      qEl.textContent='Which body part '+part[2]+'?';
+      const opts=[part];
+      while(opts.length<3){
+        const p=KidsUtil.rand(PARTS);
+        if(!opts.some(o=>o[1]===p[1])) opts.push(p);
+      }
+      KidsUtil.shuffle(opts).forEach(p=>{
+        const b=document.createElement('button'); b.className='choice';
+        b.innerHTML='<span class="ce">'+p[0]+'</span><span class="cw">'+p[1]+'</span>';
+        b.onclick=()=>pick(p,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('Which body part '+part[2]+'?');
+    }
+    function pick(p,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(p[1]===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes, your '+p[1]+'! Fun fact: '+p[3]+'!');
+        confetti(); setTimeout(newRound,3200);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Your '+p[1]+' '+PARTS.find(x=>x[1]===p[1])[2]+'. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

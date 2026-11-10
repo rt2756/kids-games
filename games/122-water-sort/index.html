@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Water Sort</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<link rel="stylesheet" href="../../shared/tubes.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#0f2027,#2c5364); --av-ink: #fff; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script src="../../shared/tubes.js"></script>
+  <script>
+    // Concept: planning ahead with groups. Layers of one colour pour together,
+    // as many as fit.
+    KidsTubes.start({
+      id: 'water-sort', mode: 'water',
+      intro: 'Pour the water so every tube holds one colour. Water only pours onto its own colour, or into an empty tube.',
+      level: n => ({ n: Math.min(4 + Math.floor(n / 2), 10), cap: 4, empties: 2 })
+    });
+  </script>
+</body>
+</html>

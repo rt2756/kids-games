@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Ring Tower</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<link rel="stylesheet" href="../../shared/tubes.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#355c7d,#6c5b7b); --av-ink: #fff; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script src="../../shared/tubes.js"></script>
+  <script>
+    // Concept: size order and thinking in steps (Tower of Hanoi).
+    KidsTubes.start({
+      id: 'ring-tower', mode: 'rings',
+      intro: 'Move all the rings to the flag. A big ring can never sit on a small ring.',
+      level: n => { const r = Math.min(2 + n, 7); return { n: r, cap: r, empties: 2 }; }
+    });
+  </script>
+</body>
+</html>

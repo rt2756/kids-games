@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Big & Small Letters</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#d4fc79,#84fab0); --av-ink: #14532d; }
+  .letter { font-size:clamp(80px,24vmin,170px); font-weight:900; line-height:1.05; background:#fff; color:#14532d; border-radius:28px;
+    min-width:1.5em; text-align:center; padding:0 24px; box-shadow:0 7px 0 rgba(0,0,0,.15); }
+  .av-choice .e { font-weight:900; font-family:"Comic Sans MS","Chalkboard SE",system-ui,sans-serif; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: matching capital and small letters — distractors are the look-alikes (b d p q).
+    const K = KidsKit, U = KidsUtil;
+    const LOOKALIKE = { a:'eoc', b:'dpq', c:'eoa', d:'bpq', e:'aco', f:'tlk', g:'qjy', h:'nbk', i:'ljt', j:'igy', k:'xhf', l:'itj', m:'nwr',
+      n:'umh', o:'ace', p:'qbd', q:'pgd', r:'nvs', s:'zcx', t:'flk', u:'nvw', v:'wuy', w:'vmu', x:'kzs', y:'vgj', z:'sxn' };
+    const draw = K.bag(Object.keys(LOOKALIKE));
+    K.quiz({ next(round) {
+      const l = draw(), L = l.toUpperCase();
+      const toSmall = round % 2 === 0;                       // alternate direction
+      const shown = toSmall ? L : l, kind = toSmall ? 'small' : 'capital', from = toSmall ? 'capital' : 'small';
+      const opts = U.shuffle([l].concat(LOOKALIKE[l].split('').slice(0, round < 6 ? 2 : 3)));
+      return {
+        title: 'Find the ' + kind + ' letter',
+        show: '<div class="letter">' + shown + '</div>',
+        say: 'This is ' + from + ' ' + L + '. Find ' + kind + ' ' + L + '.',
+        choices: opts.map(o => ({ html: '<span class="e">' + (toSmall ? o : o.toUpperCase()) + '</span>', ok: o === l,
+          say: 'That is ' + kind + ' ' + o.toUpperCase() + '. Find ' + kind + ' ' + L + '.' })),
+        praise: 'Yes! Capital ' + L + ' and small ' + L + ' go together.',
+      };
+    } });
+  </script>
+</body>
+</html>

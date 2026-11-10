@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Percent Painter</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #ff416c 0%, #ff4b2b 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #4a1220 0%, #4a160c 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #grid { display:grid; grid-template-columns:repeat(10,1fr); gap:2px; width:min(80vw,320px); aspect-ratio:1;
+    background:rgba(255,255,255,.25); padding:6px; border-radius:14px; margin-bottom:16px; }
+  .cell { background:rgba(255,255,255,.35); border-radius:3px; }
+  .cell.on { background:#ffd54f; }
+  #choices { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#c62828; font-weight:900; cursor:pointer;
+    font-size:clamp(22px,6vw,32px); padding:14px 24px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>What percent of the grid is painted?</h1>
+  <div id="grid"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const grid=document.getElementById('grid'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function newRound(){
+      locked=false; grid.innerHTML=''; choicesEl.innerHTML='';
+      // Friendly percentages, mostly multiples of 5.
+      answer=KidsUtil.rand([5,10,20,25,30,40,50,60,70,75,80,90,100,15,35,45,55,65,85,95]);
+      const cells=[];
+      for(let i=0;i<100;i++){ const d=document.createElement('div'); d.className='cell'; grid.appendChild(d); cells.push(d); }
+      KidsUtil.shuffle(cells).slice(0,answer).forEach((d,i)=>{
+        setTimeout(()=>d.classList.add('on'), i*8);
+      });
+      const opts=new Set([answer]);
+      while(opts.size<3){
+        const d=answer+KidsUtil.rand([-20,-15,-10,-5,5,10,15,20]);
+        if(d>=0&&d<=100) opts.add(d);
+      }
+      KidsUtil.shuffle([...opts]).forEach(v=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=v+'%';
+        b.onclick=()=>pick(v,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('The grid has 100 squares. What percent is painted yellow?');
+    }
+    function pick(v,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(v===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        KidsAudio.speak('Yes! '+answer+' out of 100 squares — that is '+answer+' percent!');
+        confetti(); setTimeout(newRound,2400);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Count the yellow squares — each one is 1 percent. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

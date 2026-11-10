@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Sound It Out</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body {
+    background: linear-gradient(180deg, #f6d365 0%, #fda085 100%);
+    height: 100vh; width: 100vw; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #3a2c14 0%, #3a2018 100%); }
+  h1 { color:#7a3b00; font-weight:900; font-size:clamp(20px,4.6vw,34px); margin:0; padding:86px 16px 4px; text-align:center; }
+  html[data-theme="dark"] h1 { color:#ffd9b0; }
+  #pic { font-size:clamp(70px,20vw,140px); line-height:1; margin:6px 0; }
+  #letters { display:flex; gap:clamp(8px,2.5vw,18px); margin:6px 0 4px; }
+  .letter {
+    width:clamp(54px,15vw,90px); height:clamp(54px,15vw,90px); border-radius:18px;
+    background:#fff; color:#e8590c; font-weight:900; font-size:clamp(34px,9vw,58px);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    box-shadow:0 6px 0 rgba(0,0,0,0.18); user-select:none; transition:transform .08s;
+  }
+  .letter:active { transform:translateY(3px); }
+  .letter.lit { background:#ffe8a3; transform:scale(1.08); }
+  #say { border:none; background:#e8590c; color:#fff; font-weight:900; font-size:clamp(16px,3.6vw,22px);
+    padding:12px 22px; border-radius:999px; cursor:pointer; box-shadow:0 6px 0 #ad3e00; margin:8px 0; }
+  #say:active { transform:translateY(3px); box-shadow:0 3px 0 #ad3e00; }
+  #prompt { color:#7a3b00; font-weight:800; font-size:clamp(15px,3.4vw,20px); margin:4px 0; }
+  html[data-theme="dark"] #prompt { color:#ffd9b0; }
+  #choices { display:flex; gap:clamp(12px,4vw,28px); flex-wrap:wrap; justify-content:center; padding:6px 10px 16px; }
+  .choice {
+    width:clamp(78px,20vw,120px); height:clamp(78px,20vw,120px); border-radius:22px; background:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:clamp(46px,12vw,80px);
+    cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,0.18); transition:transform .08s;
+  }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#7a3b00; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#ffd9b0; }
+  .confetti { position:fixed; font-size:28px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Sound it out!</h1>
+  <div id="pic"></div>
+  <div id="letters"></div>
+  <button id="say">🔊 Sound it out</button>
+  <div id="prompt">Now tap the picture!</div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const WORDS = [
+      { w:'cat', e:'🐱' }, { w:'dog', e:'🐶' }, { w:'sun', e:'☀️' }, { w:'pig', e:'🐷' },
+      { w:'bus', e:'🚌' }, { w:'hat', e:'🎩' }, { w:'bed', e:'🛏️' }, { w:'cup', e:'☕' },
+      { w:'fox', e:'🦊' }, { w:'pen', e:'🖊️' }, { w:'hen', e:'🐔' }, { w:'box', e:'📦' },
+      { w:'bug', e:'🐛' }, { w:'web', e:'🕸️' }, { w:'jam', e:'🍓' }, { w:'fan', e:'🪭' },
+    ];
+    const SOUND = { a:'ah', b:'buh', c:'kuh', d:'duh', e:'eh', f:'ff', g:'guh', h:'huh',
+      i:'ih', j:'juh', k:'kuh', l:'ll', m:'mm', n:'nn', o:'aw', p:'puh', r:'rr', s:'ss',
+      t:'tuh', u:'uh', v:'vuh', w:'wuh', x:'ks', y:'yuh', z:'zz' };
+
+    const picEl = document.getElementById('pic');
+    const lettersEl = document.getElementById('letters');
+    const choicesEl = document.getElementById('choices');
+    const scoreEl = document.getElementById('score');
+    let cur, score = 0, locked = false;
+
+    function blend(word, done) {
+      const chars = word.split('');
+      const nodes = [...lettersEl.children];
+      let i = 0;
+      (function step() {
+        if (i >= chars.length) {
+          nodes.forEach(n => n.classList.remove('lit'));
+          setTimeout(() => { KidsAudio.speak(word, { rate:0.8 }); if (done) setTimeout(done, 700); }, 350);
+          return;
+        }
+        nodes.forEach(n => n.classList.remove('lit'));
+        nodes[i].classList.add('lit');
+        KidsAudio.speak(SOUND[chars[i]] || chars[i], { rate:0.85 });
+        i++;
+        setTimeout(step, 650);
+      })();
+    }
+
+    function newRound() {
+      locked = false;
+      cur = KidsUtil.rand(WORDS);
+      picEl.textContent = '❓';
+      lettersEl.innerHTML = '';
+      cur.w.split('').forEach(ch => {
+        const d = document.createElement('div');
+        d.className = 'letter'; d.textContent = ch;
+        d.onclick = () => KidsAudio.speak(SOUND[ch] || ch, { rate:0.85 });
+        lettersEl.appendChild(d);
+      });
+      const others = KidsUtil.shuffle(WORDS.filter(x => x.w !== cur.w)).slice(0, 2);
+      const opts = KidsUtil.shuffle([cur, ...others]);
+      choicesEl.innerHTML = '';
+      opts.forEach(o => {
+        const c = document.createElement('div');
+        c.className = 'choice'; c.textContent = o.e;
+        c.onclick = () => pick(o, c);
+        choicesEl.appendChild(c);
+      });
+      setTimeout(() => blend(cur.w), 400);
+    }
+
+    function pick(o, c) {
+      if (locked) return;
+      try { KidsAudio.getAudio(); } catch (e) {}
+      if (o.w === cur.w) {
+        locked = true;
+        picEl.textContent = cur.e;
+        score++; scoreEl.textContent = '⭐ ' + score;
+        KidsAudio.playChime('yay');
+        KidsAudio.speak(`Yes! ${cur.w}!`);
+        confetti();
+        setTimeout(newRound, 1900);
+      } else {
+        c.classList.add('wrong');
+        KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Try again.');
+        setTimeout(() => c.classList.remove('wrong'), 450);
+      }
+    }
+
+    function confetti() {
+      for (let i = 0; i < 24; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.textContent = KidsUtil.rand(['🎉','⭐','✨','🌈']);
+        c.style.left = Math.random()*100 + 'vw';
+        c.style.animationDelay = (Math.random()*0.4)+'s';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2100);
+      }
+    }
+
+    document.getElementById('say').onclick = () => { try { KidsAudio.getAudio(); } catch(e){} blend(cur.w); };
+    newRound();
+  </script>
+</body>
+</html>

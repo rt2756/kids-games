@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Color Mixing</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #ff9a9e 0%, #fecfef 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #4e2a2c 0%, #4e2a44 100%); }
+  h1 { color:#7a1f3d; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; }
+  html[data-theme="dark"] h1 { color:#ffd0e2; }
+  #target { width:clamp(100px,26vw,150px); height:clamp(100px,26vw,150px); border-radius:50%;
+    border:6px solid #fff; box-shadow:0 10px 26px rgba(0,0,0,.25); transition:background .5s, transform .3s; }
+  #targetName { color:#7a1f3d; font-weight:900; font-size:clamp(22px,6vw,34px); margin:10px 0 4px; text-transform:uppercase; letter-spacing:2px; }
+  html[data-theme="dark"] #targetName { color:#fff; }
+  #choices { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; padding:14px 12px; }
+  .choice { border:none; border-radius:18px; background:#fff; cursor:pointer; padding:14px 18px;
+    box-shadow:0 7px 0 rgba(0,0,0,.18); transition:transform .08s; font-family:inherit;
+    display:flex; align-items:center; gap:8px; }
+  .dot { width:clamp(34px,9vw,48px); height:clamp(34px,9vw,48px); border-radius:50%; border:3px solid rgba(0,0,0,.15); }
+  .plus { font-size:26px; font-weight:900; color:#7a1f3d; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#7a1f3d; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#ffd0e2; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+  #target.pop { transform:scale(1.15); }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Which two colors mix to make this?</h1>
+  <div id="target"></div>
+  <div id="targetName"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // [resultName, resultCss, colorA name, cssA, colorB name, cssB]
+    const MIXES=[
+      ['purple','#8e44ad','red','#e53935','blue','#1e88e5'],
+      ['orange','#fb8c00','red','#e53935','yellow','#fdd835'],
+      ['green','#43a047','blue','#1e88e5','yellow','#fdd835'],
+      ['pink','#f48fb1','red','#e53935','white','#ffffff'],
+      ['grey','#9e9e9e','black','#212121','white','#ffffff'],
+      ['light blue','#81d4fa','blue','#1e88e5','white','#ffffff'],
+      ['brown','#795548','red','#e53935','green','#43a047'],
+    ];
+    const target=document.getElementById('target'), targetName=document.getElementById('targetName'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function pairHTML(cssA,cssB){
+      return '<span class="dot" style="background:'+cssA+'"></span><span class="plus">+</span><span class="dot" style="background:'+cssB+'"></span>';
+    }
+    function newRound(){
+      locked=false; choicesEl.innerHTML='';
+      const mix=KidsUtil.rand(MIXES);
+      answer=mix[0];
+      target.style.background=mix[1]; targetName.textContent=mix[0];
+      const opts=[mix];
+      while(opts.length<3){
+        const m=KidsUtil.rand(MIXES);
+        if(!opts.some(o=>o[0]===m[0])) opts.push(m);
+      }
+      KidsUtil.shuffle(opts).forEach(m=>{
+        const b=document.createElement('button'); b.className='choice';
+        b.innerHTML=pairHTML(m[3],m[5]);
+        b.onclick=()=>pick(m,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('Which two colors mix together to make '+mix[0]+'?');
+    }
+    function pick(m,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(m[0]===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); target.classList.add('pop');
+        KidsAudio.playChime('yay');
+        KidsAudio.speak(m[2]+' and '+m[4]+' make '+m[0]+'! Wonderful!');
+        confetti();
+        setTimeout(()=>{ target.classList.remove('pop'); newRound(); },2200);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Those make '+m[0]+'. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

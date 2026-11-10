@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Typing Dash</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #141e30 0%, #243b55 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0a0f18 0%, #131f2e 100%); }
+  #hud { display:flex; justify-content:center; gap:22px; color:#cfe3ff; font-weight:900; font-size:clamp(15px,3.6vw,20px); padding:78px 16px 4px; }
+  #field { position:relative; flex:1; width:100%; overflow:hidden; }
+  .fword { position:absolute; background:#fff; color:#1b2a44; font-weight:900; font-size:clamp(18px,5vw,28px);
+    padding:8px 14px; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,.3); white-space:nowrap; }
+  .fword.hit { animation:burst .3s forwards; }
+  @keyframes burst { to { transform:scale(1.5); opacity:0; } }
+  #typed { text-align:center; color:#7ee8fa; font-weight:900; font-size:clamp(22px,6vw,34px); min-height:40px; letter-spacing:2px; }
+  #input { position:absolute; opacity:0; pointer-events:none; }
+  #tap { text-align:center; color:#cfe3ff; font-weight:700; font-size:14px; padding-bottom:10px; }
+  #over { position:fixed; inset:0; background:rgba(10,15,25,.92); display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; z-index:600; }
+  #over h2 { color:#fff; font-size:clamp(28px,8vw,48px); font-weight:900; margin:0; }
+  #over p { color:#7ee8fa; font-size:clamp(18px,5vw,26px); font-weight:800; margin:0; }
+  #restart { border:none; background:#7ee8fa; color:#141e30; font-weight:900; font-size:20px; padding:14px 28px; border-radius:999px; cursor:pointer; }
+</style>
+</head>
+<body>
+  <div id="hud"><span id="score">Score 0</span><span id="lives">❤️❤️❤️</span></div>
+  <div id="field"></div>
+  <div id="typed"></div>
+  <div id="tap">Type the falling words!</div>
+  <input id="input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+  <div id="over"><h2>Game Over</h2><p id="finalScore"></p><button id="restart">Play again</button></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const WORDS=['cat','dog','sun','run','jump','book','tree','star','fish','blue','green','happy','quick','water','plant','smile','cloud','dance','light','river','table','garden','rocket','yellow','friend','school','orange','pencil','window','dragon'];
+    const field=document.getElementById('field'), typedEl=document.getElementById('typed'), input=document.getElementById('input'),
+      scoreEl=document.getElementById('score'), livesEl=document.getElementById('lives'), overEl=document.getElementById('over'), finalScore=document.getElementById('finalScore');
+    let words=[], score=0, lives=3, spawnMs=2200, lastSpawn=0, raf=null, lastT=0, running=false;
+
+    function focusInput(){ input.focus(); }
+    document.body.addEventListener('pointerdown', focusInput);
+
+    function spawn(){
+      const text=KidsUtil.rand(WORDS);
+      const el=document.createElement('div'); el.className='fword'; el.textContent=text;
+      field.appendChild(el);
+      const maxX=Math.max(10, field.clientWidth - el.offsetWidth - 10);
+      const w={ el, text, x:10+Math.random()*maxX, y:-30, speed:26+Math.random()*16+score*0.6 };
+      el.style.left=w.x+'px';
+      words.push(w);
+    }
+
+    function loop(t){
+      if(!running) return;
+      if(!lastT) lastT=t; const dt=(t-lastT)/1000; lastT=t;
+      if(t-lastSpawn>spawnMs){ spawn(); lastSpawn=t; spawnMs=Math.max(900, spawnMs-25); }
+      const h=field.clientHeight;
+      for(let i=words.length-1;i>=0;i--){ const w=words[i]; w.y+=w.speed*dt; w.el.style.top=w.y+'px';
+        if(w.y>h-30){ w.el.remove(); words.splice(i,1); loseLife(); } }
+      raf=requestAnimationFrame(loop);
+    }
+
+    function handleType(){
+      const val=input.value.trim().toLowerCase();
+      typedEl.textContent=val;
+      const i=words.findIndex(w=>w.text===val);
+      if(i>=0){ const w=words[i]; w.el.classList.add('hit'); setTimeout(()=>w.el.remove(),300); words.splice(i,1);
+        score++; scoreEl.textContent='Score '+score; KidsAudio.playPop(); input.value=''; typedEl.textContent=''; }
+    }
+    input.addEventListener('input', handleType);
+
+    function loseLife(){ lives--; livesEl.textContent='❤️'.repeat(Math.max(0,lives))||'💔'; KidsAudio.playChime('uhoh'); if(lives<=0) gameOver(); }
+
+    function gameOver(){ running=false; cancelAnimationFrame(raf); finalScore.textContent='You typed '+score+' words!'; overEl.style.display='flex';
+      KidsAudio.speak('Game over! You typed '+score+' words.'); }
+
+    function start(){ words.forEach(w=>w.el.remove()); words=[]; score=0; lives=3; spawnMs=2200; lastSpawn=0; lastT=0; running=true;
+      scoreEl.textContent='Score 0'; livesEl.textContent='❤️❤️❤️'; typedEl.textContent=''; input.value=''; overEl.style.display='none';
+      focusInput(); KidsAudio.speak('Type the falling words!'); raf=requestAnimationFrame(loop); }
+
+    document.getElementById('restart').onclick=start;
+    start();
+  </script>
+</body>
+</html>

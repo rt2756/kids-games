@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Water Cycle</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #005bea 0%, #00c6fb 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #001c46 0%, #003a4a 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #cards { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; padding:0 12px; margin-bottom:16px; }
+  .card { border:none; border-radius:18px; background:rgba(255,255,255,.94); cursor:pointer; font-family:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 14px; max-width:170px;
+    box-shadow:0 7px 0 rgba(0,0,0,.18); transition:transform .12s; }
+  .card .ce { font-size:clamp(38px,10vw,56px); line-height:1; }
+  .card .cw { font-weight:900; font-size:clamp(13px,3.4vw,16px); color:#01579b; }
+  .card .cd { font-weight:600; font-size:clamp(11px,3vw,13px); color:#456; }
+  .card:active { transform:scale(.94); }
+  .card.done { background:#b6f09c; pointer-events:none; transform:scale(.92); }
+  .card.wrong { animation:shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #timeline { display:flex; gap:8px; align-items:center; min-height:70px; flex-wrap:wrap; justify-content:center; padding:0 12px; }
+  .stage { background:rgba(255,255,255,.5); border-radius:14px; padding:8px 12px; font-size:clamp(26px,7vw,38px); line-height:1; animation:popin .3s; }
+  .arrow { color:#fff; font-size:24px; font-weight:900; }
+  @keyframes popin { from{transform:scale(.3)} to{transform:scale(1)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>The water cycle — tap the steps in order!</h1>
+  <div id="cards"></div>
+  <div id="timeline"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const STEPS=[
+      ['☀️','Evaporation','Sun heats water into vapour'],
+      ['☁️','Condensation','Vapour cools into clouds'],
+      ['🌧️','Precipitation','Rain falls from the clouds'],
+      ['🌊','Collection','Water gathers in rivers and seas'],
+    ];
+    const cardsEl=document.getElementById('cards'), timeline=document.getElementById('timeline'), scoreEl=document.getElementById('score');
+    let next, score=0, locked=false;
+
+    function newRound(){
+      locked=false; next=0; cardsEl.innerHTML=''; timeline.innerHTML='';
+      KidsUtil.shuffle(STEPS.map((s,i)=>({s,i}))).forEach(({s,i})=>{
+        const b=document.createElement('button'); b.className='card'; b.dataset.i=i;
+        b.innerHTML='<span class="ce">'+s[0]+'</span><span class="cw">'+s[1]+'</span><span class="cd">'+s[2]+'</span>';
+        b.onclick=()=>pick(b); cardsEl.appendChild(b);
+      });
+      KidsAudio.speak('The water cycle! What happens first? The sun starts it all.');
+    }
+    function pick(b){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      const i=+b.dataset.i;
+      if(i===next){
+        b.classList.add('done'); KidsAudio.playPop();
+        if(next>0){ const a=document.createElement('span'); a.className='arrow'; a.textContent='→'; timeline.appendChild(a); }
+        const st=document.createElement('div'); st.className='stage'; st.textContent=STEPS[i][0]; timeline.appendChild(st);
+        KidsAudio.speak(STEPS[i][1]+'. '+STEPS[i][2]+'.');
+        next++;
+        if(next===STEPS.length){
+          locked=true; score++; scoreEl.textContent='⭐ '+score;
+          KidsAudio.playChime('yay');
+          setTimeout(()=>KidsAudio.speak('And then it starts all over again. That is the water cycle!'),2400);
+          confetti(); setTimeout(newRound,5200);
+        }
+      } else {
+        b.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak(next===0?'The sun starts the cycle. Try again!':'What happens after '+STEPS[next-1][1]+'?');
+        setTimeout(()=>b.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

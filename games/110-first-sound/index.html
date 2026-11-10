@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>First Sound</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#c2e9fb,#81d4fa); --av-ink: #0d3b66; }
+  .letter { font-size:clamp(60px,17vmin,120px); font-weight:900; line-height:1; background:#fff; color:#0d47a1; border-radius:24px; padding:6px 26px; box-shadow:0 6px 0 rgba(0,0,0,.15); }
+  .pair { display:flex; align-items:center; gap:clamp(12px,4vmin,30px); }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: beginning sounds — "B is for ball. What else starts with B?"
+    const K = KidsKit, U = KidsUtil;
+    const WORDS = {
+      B: [['ball','⚽'],['banana','🍌'],['bus','🚌'],['bear','🐻'],['bed','🛏️'],['bee','🐝']],
+      C: [['cat','🐱'],['car','🚗'],['cow','🐄'],['carrot','🥕'],['cake','🎂'],['cap','🧢']],
+      D: [['dog','🐶'],['duck','🦆'],['door','🚪'],['drum','🥁'],['deer','🦌']],
+      F: [['fish','🐟'],['frog','🐸'],['flower','🌸'],['fire','🔥'],['fox','🦊']],
+      H: [['house','🏠'],['hat','🎩'],['horse','🐴'],['heart','❤️'],['hen','🐔']],
+      L: [['lion','🦁'],['lemon','🍋'],['leaf','🍃'],['ladder','🪜'],['lamp','💡']],
+      M: [['monkey','🐒'],['moon','🌙'],['mango','🥭'],['milk','🥛'],['mouse','🐭']],
+      P: [['pig','🐷'],['pizza','🍕'],['pen','🖊️'],['panda','🐼'],['parrot','🦜']],
+      R: [['rabbit','🐇'],['rainbow','🌈'],['rocket','🚀'],['rose','🌹'],['ring','💍']],
+      S: [['sun','☀️'],['star','⭐'],['snake','🐍'],['socks','🧦'],['spider','🕷️']],
+      T: [['tiger','🐯'],['tree','🌳'],['train','🚂'],['tomato','🍅'],['turtle','🐢']],
+    };
+    const draw = K.bag(Object.keys(WORDS));
+    K.quiz({ next(round) {
+      const L = draw();
+      const [example, answer] = U.shuffle(WORDS[L]);
+      const others = U.shuffle(Object.keys(WORDS).filter(k => k !== L)).slice(0, round < 5 ? 2 : 3).map(k => U.rand(WORDS[k]));
+      return {
+        title: 'What else starts with <b>' + L + '</b>?',
+        show: '<div class="pair"><div class="letter">' + L + L.toLowerCase() + '</div><div class="av-big">' + example[1] + '</div></div><div class="av-word">' + example[0] + '</div>',
+        say: L + ' is for ' + example[0] + '. What else starts with ' + L + '?',
+        choices: U.shuffle([answer].concat(others)).map(w => ({ html: K.card(w[1], w[0]), ok: w === answer,
+          say: w[0] + ' starts with ' + w[0][0].toUpperCase() + '. Listen: ' + example[0] + '. What else starts with ' + L + '?' })),
+        praise: 'Yes! ' + example[0] + ', ' + answer[0] + '. Both start with ' + L + '!',
+      };
+    } });
+  </script>
+</body>
+</html>

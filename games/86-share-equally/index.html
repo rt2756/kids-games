@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Share Equally</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #f46b45 0%, #eea849 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #4e2012 0%, #4e3512 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #jar { font-size:clamp(24px,6vw,34px); color:#fff; font-weight:900; margin-bottom:8px; text-shadow:1px 1px 0 rgba(0,0,0,.2); }
+  #plates { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; padding:0 12px; margin-bottom:16px; }
+  .plate { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .kid { font-size:clamp(34px,9vw,50px); line-height:1; }
+  .dish { width:clamp(80px,20vw,110px); min-height:clamp(60px,15vw,84px); background:rgba(255,255,255,.9); border-radius:50% 50% 14px 14px;
+    display:flex; flex-wrap:wrap; gap:3px; align-content:flex-start; justify-content:center; padding:8px; box-shadow:0 6px 0 rgba(0,0,0,.15); }
+  .cookie { font-size:clamp(18px,4.6vw,24px); line-height:1; animation:popin .3s; }
+  @keyframes popin { from{transform:scale(.2)} to{transform:scale(1)} }
+  #choices { display:flex; gap:14px; justify-content:center; }
+  .choice { border:none; border-radius:16px; background:#fff; color:#bf360c; font-weight:900; cursor:pointer;
+    font-size:clamp(24px,7vw,36px); padding:14px 26px;
+    box-shadow:0 7px 0 rgba(0,0,0,.2); transition:transform .08s; font-family:inherit; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="q">Share the cookies equally!</h1>
+  <div id="jar"></div>
+  <div id="plates"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const KIDS=['🧒','👧','👦','🧒🏽','👧🏽'];
+    const TREATS=[['🍪','cookies'],['🍓','strawberries'],['🍬','sweets'],['🥕','carrots']];
+    const jarEl=document.getElementById('jar'), platesEl=document.getElementById('plates'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score'), qEl=document.getElementById('q');
+    let total, kids, answer, treat, score=0, locked=false;
+
+    function newRound(){
+      locked=false; choicesEl.innerHTML=''; platesEl.innerHTML='';
+      kids=2+Math.floor(Math.random()*3);          // 2..4 friends
+      answer=2+Math.floor(Math.random()*4);        // 2..5 each
+      total=kids*answer;
+      treat=KidsUtil.rand(TREATS);
+      qEl.textContent='Share '+total+' '+treat[1]+' among '+kids+' friends!';
+      jarEl.textContent=treat[0].repeat(Math.min(total,12))+(total>12?' ×'+total:'');
+      const chosen=KidsUtil.shuffle(KIDS).slice(0,kids);
+      chosen.forEach(k=>{
+        const p=document.createElement('div'); p.className='plate';
+        p.innerHTML='<div class="kid">'+k+'</div><div class="dish"></div>';
+        platesEl.appendChild(p);
+      });
+      const opts=new Set([answer]);
+      while(opts.size<3){ opts.add(Math.max(1,answer+Math.floor(Math.random()*5)-2)); }
+      KidsUtil.shuffle([...opts]).forEach(n=>{
+        const b=document.createElement('button'); b.className='choice'; b.textContent=n;
+        b.onclick=()=>pick(n,b); choicesEl.appendChild(b);
+      });
+      KidsAudio.speak('Share '+total+' '+treat[1]+' equally among '+kids+' friends. How many does each friend get?');
+    }
+    function deal(){
+      // Animate dealing one treat at a time, round-robin onto the plates.
+      const dishes=[...document.querySelectorAll('.dish')];
+      for(let i=0;i<total;i++){
+        setTimeout(()=>{
+          const c=document.createElement('span'); c.className='cookie'; c.textContent=treat[0];
+          dishes[i%kids].appendChild(c); KidsAudio.playPop();
+        }, i*180);
+      }
+    }
+    function pick(n,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(n===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        deal();
+        setTimeout(()=>KidsAudio.speak(total+' shared by '+kids+' is '+answer+' each. Fair for everyone!'), total*180+200);
+        confetti(); setTimeout(newRound, total*180+2600);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Hmm, that would not be equal. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

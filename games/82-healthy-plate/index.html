@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Healthy Plate</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #96fbc4 0%, #f9f586 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #123a26 0%, #3a3a12 100%); }
+  h1 { color:#1b5e20; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; }
+  html[data-theme="dark"] h1 { color:#c8ffd8; }
+  #food { font-size:clamp(80px,22vw,130px); line-height:1; transition:transform .3s; }
+  #foodName { color:#1b5e20; font-weight:900; font-size:clamp(20px,5.5vw,30px); margin:8px 0 16px; }
+  html[data-theme="dark"] #foodName { color:#fff; }
+  #bins { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; padding:0 12px; }
+  .bin { border:none; border-radius:22px; cursor:pointer; padding:18px 22px; font-family:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    box-shadow:0 8px 0 rgba(0,0,0,.18); transition:transform .08s; min-width:150px; }
+  .bin .be { font-size:clamp(40px,11vw,60px); line-height:1; }
+  .bin .bt { font-weight:900; font-size:clamp(15px,4vw,19px); color:#fff; }
+  #binGood { background:#2e7d32; } #binSometimes { background:#e65100; }
+  .bin:active { transform:translateY(3px); }
+  .bin.wrong { animation:shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#1b5e20; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#c8ffd8; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+  #food.eaten { transform:scale(0) rotate(360deg); }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Everyday food or sometimes food?</h1>
+  <div id="food"></div>
+  <div id="foodName"></div>
+  <div id="bins">
+    <button class="bin" id="binGood"><span class="be">🥗</span><span class="bt">Everyday food</span></button>
+    <button class="bin" id="binSometimes"><span class="be">🍭</span><span class="bt">Sometimes food</span></button>
+  </div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const FOODS=[
+      ['🍎','apple',1],['🍌','banana',1],['🥕','carrot',1],['🥛','milk',1],['🥚','egg',1],
+      ['🍊','orange',1],['🥜','nuts',1],['🍲','dal and rice',1],['🥒','cucumber',1],['🍇','grapes',1],
+      ['🍬','candy',0],['🍟','fries',0],['🥤','fizzy drink',0],['🍩','donut',0],['🎂','cake',0],
+      ['🍫','chocolate',0],['🍪','biscuits',0],['🍦','ice cream',0],['🍕','pizza',0],
+    ];
+    const foodEl=document.getElementById('food'), nameEl=document.getElementById('foodName'), scoreEl=document.getElementById('score');
+    let item, score=0, locked=false;
+
+    function newRound(){
+      locked=false;
+      foodEl.classList.remove('eaten');
+      item=KidsUtil.rand(FOODS);
+      foodEl.textContent=item[0]; nameEl.textContent=item[1];
+      KidsAudio.speak(item[1]+'. Is it an everyday food, or a sometimes food?');
+    }
+    function pick(isGoodBin,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if((item[2]===1)===isGoodBin){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        foodEl.classList.add('eaten');
+        KidsAudio.playChime('yay');
+        KidsAudio.speak(item[2]===1
+          ? 'Yes! '+item[1]+' makes you strong. Eat it every day!'
+          : "That's right! "+item[1]+' is a sometimes food — just a little, once in a while!');
+        confetti(); setTimeout(newRound,2500);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak('Think again! Does '+item[1]+' make your body strong every day?');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    document.getElementById('binGood').onclick=e=>pick(true,e.currentTarget);
+    document.getElementById('binSometimes').onclick=e=>pick(false,e.currentTarget);
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

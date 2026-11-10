@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Fraction Match</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #36d1dc 0%, #5b86e5 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #0e3a3e 0%, #16244a 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,28px); margin:0; padding:82px 16px 2px; text-align:center; }
+  .card { background:rgba(255,255,255,.95); border-radius:16px; padding:12px 16px; margin:6px; width:min(80vw,360px);
+    display:flex; align-items:center; gap:14px; box-shadow:0 6px 16px rgba(0,0,0,.2); }
+  .frac { font-weight:900; font-size:clamp(26px,7vw,40px); color:#2a4d8f; min-width:64px; text-align:center; }
+  .bar { flex:1; display:flex; height:34px; border-radius:8px; overflow:hidden; border:2px solid #2a4d8f; }
+  .seg { flex:1; border-right:1px solid #2a4d8f; }
+  .seg:last-child { border-right:none; }
+  .seg.on { background:#ff6b6b; }
+  #target .frac { color:#fff; }
+  #target { background:rgba(255,255,255,.18); }
+  #target .bar { border-color:#fff; }
+  #target .seg { border-color:#fff; }
+  #prompt { color:#fff; font-weight:800; font-size:clamp(14px,3.4vw,20px); margin:6px 0 2px; }
+  .choice { cursor:pointer; transition:transform .08s; }
+  .choice:active { transform:scale(.97); }
+  .choice.wrong { animation:shake .4s; }
+  .choice.right { outline:4px solid #2ecc71; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Find the equal fraction</h1>
+  <div class="card" id="target"></div>
+  <div id="prompt">Which one is the same amount?</div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const BASES=[[1,2],[1,3],[2,3],[1,4],[3,4],[1,5],[2,5]];
+    const targetEl=document.getElementById('target'), choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, score=0, locked=false;
+
+    function barHTML(n,d){ let s='<div class="bar">'; for(let i=0;i<d;i++) s+=`<div class="seg${i<n?' on':''}"></div>`; return s+'</div>'; }
+    function cardInner(n,d){ return `<div class="frac">${n}/${d}</div>`+barHTML(n,d); }
+
+    function newRound(){
+      locked=false;
+      const [n,d]=KidsUtil.rand(BASES);
+      targetEl.innerHTML=cardInner(n,d);
+      const k=KidsUtil.rand([2,3]); answer=[n*k,d*k];
+      const choices=[answer];
+      let guard=0;
+      while(choices.length<3 && guard++<50){
+        const dd=KidsUtil.rand([2,3,4,5,6,8]); const nn=1+Math.floor(Math.random()*(dd-1));
+        if(Math.abs(nn/dd - n/d)<1e-9) continue;
+        if(choices.some(c=>c[0]===nn&&c[1]===dd)) continue;
+        choices.push([nn,dd]);
+      }
+      choicesEl.innerHTML='';
+      KidsUtil.shuffle(choices).forEach(([cn,cd])=>{ const c=document.createElement('div'); c.className='card choice'; c.innerHTML=cardInner(cn,cd);
+        c.onclick=()=>pick(cn,cd,c); choicesEl.appendChild(c); });
+      KidsAudio.speak(`Which is the same as ${n} out of ${d}?`);
+    }
+
+    function pick(cn,cd,c){
+      if(locked) return; try{KidsAudio.getAudio();}catch(e){}
+      if(cn===answer[0]&&cd===answer[1]){ locked=true; c.classList.add('right'); score++; scoreEl.textContent='⭐ '+score;
+        KidsAudio.playChime('yay'); KidsAudio.speak(`Yes! ${cn} over ${cd} is equal!`); confetti(); setTimeout(newRound,2100);
+      } else { c.classList.add('wrong'); KidsAudio.playChime('uhoh'); KidsAudio.speak('Not equal. Try again.'); setTimeout(()=>c.classList.remove('wrong'),450); }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌈']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

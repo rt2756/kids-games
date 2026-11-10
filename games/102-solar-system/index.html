@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Solar System</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #0f0c29 0%, #302b63 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #060515 0%, #181432 100%); }
+  h1 { color:#fff; font-weight:900; font-size:clamp(18px,4.2vw,26px); margin:0; position:fixed; top:96px; left:0; right:0; text-align:center; text-shadow:1px 1px 0 rgba(0,0,0,.3); }
+  .star { position:fixed; color:#fff; opacity:.6; pointer-events:none; animation:twinkle 2.5s infinite; }
+  @keyframes twinkle { 0%,100%{opacity:.2} 50%{opacity:.9} }
+  #q { color:#fff; font-weight:900; font-size:clamp(20px,5.5vw,32px); text-align:center; padding:0 16px; margin-bottom:6px; text-shadow:2px 2px 0 rgba(0,0,0,.3); max-width:620px; }
+  #belt { color:#ffd54f; font-size:clamp(22px,6vw,32px); margin-bottom:14px; min-height:40px; letter-spacing:4px; }
+  #choices { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; padding:0 12px; }
+  .choice { border:none; border-radius:18px; background:rgba(255,255,255,.95); cursor:pointer; font-family:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 22px;
+    box-shadow:0 7px 0 rgba(0,0,0,.35); transition:transform .08s; }
+  .choice .ce { font-size:clamp(38px,10vw,58px); line-height:1; }
+  .choice .cw { font-weight:900; font-size:clamp(14px,3.8vw,18px); color:#302b63; }
+  .choice:active { transform:translateY(3px); }
+  .choice.wrong { animation:shake .35s; }
+  .choice.right { background:#b6f09c; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#fff; font-weight:900; font-size:18px; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1>Journey through space!</h1>
+  <div id="q"></div>
+  <div id="belt"></div>
+  <div id="choices"></div>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    // Planets in order from the Sun. Emoji are stand-ins to keep them distinct.
+    const PLANETS=[
+      ['☿️','Mercury','the smallest planet, closest to the Sun'],
+      ['🧡','Venus','the hottest planet'],
+      ['🌍','Earth','our home planet — the only one with life'],
+      ['🔴','Mars','the red planet'],
+      ['🟠','Jupiter','the biggest planet of all'],
+      ['🪐','Saturn','the planet with beautiful rings'],
+      ['🩵','Uranus','the planet that spins on its side'],
+      ['🔵','Neptune','the farthest, windiest planet'],
+    ];
+    const ORDINAL=['first','second','third','fourth','fifth','sixth','seventh','eighth'];
+    const qEl=document.getElementById('q'), belt=document.getElementById('belt'),
+      choicesEl=document.getElementById('choices'), scoreEl=document.getElementById('score');
+    let answer, winLine, score=0, locked=false;
+
+    // Sprinkle twinkling stars on the sky
+    for(let i=0;i<26;i++){
+      const s=document.createElement('div'); s.className='star'; s.textContent='✦';
+      s.style.left=Math.random()*100+'vw'; s.style.top=Math.random()*100+'vh';
+      s.style.fontSize=(6+Math.random()*12)+'px'; s.style.animationDelay=(Math.random()*2.5)+'s';
+      document.body.appendChild(s);
+    }
+
+    function newRound(){
+      locked=false; choicesEl.innerHTML=''; belt.textContent='';
+      const factMode=Math.random()<0.5;
+      let correct;
+      if(factMode){
+        correct=KidsUtil.rand(PLANETS);
+        qEl.textContent='Which planet is '+correct[2]+'?';
+        KidsAudio.speak('Which planet is '+correct[2]+'?');
+        winLine='Yes! '+correct[1]+' is '+correct[2]+'!';
+      } else {
+        const idx=Math.floor(Math.random()*PLANETS.length);
+        correct=PLANETS[idx];
+        qEl.textContent='Which planet is '+ORDINAL[idx]+' from the Sun?';
+        belt.textContent='☀️ '+PLANETS.map((p,i)=>i===idx?'❓':p[0]).join(' ');
+        KidsAudio.speak('Counting out from the Sun, which planet comes '+ORDINAL[idx]+'?');
+        winLine='Yes! '+correct[1]+' is the '+ORDINAL[idx]+' planet from the Sun!';
+      }
+      answer=correct[1];
+      const opts=[correct];
+      while(opts.length<3){
+        const p=KidsUtil.rand(PLANETS);
+        if(!opts.some(o=>o[1]===p[1])) opts.push(p);
+      }
+      KidsUtil.shuffle(opts).forEach(p=>{
+        const b=document.createElement('button'); b.className='choice';
+        b.innerHTML='<span class="ce">'+p[0]+'</span><span class="cw">'+p[1]+'</span>';
+        b.onclick=()=>pick(p,b); choicesEl.appendChild(b);
+      });
+    }
+    function pick(p,btn){
+      if(locked) return;
+      try{KidsAudio.getAudio();}catch(e){}
+      if(p[1]===answer){
+        locked=true; score++; scoreEl.textContent='⭐ '+score;
+        btn.classList.add('right'); KidsAudio.playChime('yay');
+        KidsAudio.speak(winLine);
+        confetti(); setTimeout(newRound,2700);
+      } else {
+        btn.classList.add('wrong'); KidsAudio.playChime('uhoh');
+        KidsAudio.speak(p[1]+' is '+p[2]+'. Try again!');
+        setTimeout(()=>btn.classList.remove('wrong'),400);
+      }
+    }
+    function confetti(){ for(let i=0;i<22;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🚀','🪐']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    newRound();
+  </script>
+</body>
+</html>

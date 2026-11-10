@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Parts of a Plant</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<style>
+  body { background: linear-gradient(180deg, #a8e063 0%, #56ab2f 100%);
+    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+  html[data-theme="dark"] body { background: linear-gradient(180deg, #233a10 0%, #14310a 100%); }
+  h1 { color:#1d3a00; font-weight:900; font-size:clamp(20px,4.8vw,32px); margin:0; padding:84px 16px 4px; text-align:center; }
+  html[data-theme="dark"] h1 { color:#d4f5b0; }
+  svg { width:min(72vw,300px); height:auto; flex:1; max-height:62vh; }
+  .part { cursor:pointer; }
+  .part.flash { animation:flash .6s; }
+  @keyframes flash { 0%,100%{filter:none} 50%{filter:drop-shadow(0 0 10px #fff) brightness(1.3)} }
+  #score { position:fixed; top:20px; left:50%; transform:translateX(-50%); color:#1d3a00; font-weight:900; font-size:18px; }
+  html[data-theme="dark"] #score { color:#d4f5b0; }
+  .confetti { position:fixed; font-size:26px; pointer-events:none; z-index:500; animation:fall 1.6s ease-in forwards; }
+  @keyframes fall { from{transform:translateY(-30px);opacity:1} to{transform:translateY(105vh) rotate(360deg);opacity:.8} }
+</style>
+</head>
+<body>
+  <div id="score">⭐ 0</div>
+  <h1 id="prompt">Tap the part!</h1>
+  <svg viewBox="0 0 200 240" id="plant">
+    <!-- roots -->
+    <g class="part" data-part="root">
+      <path d="M100 188 L80 225 M100 188 L100 230 M100 188 L120 225 M100 188 L65 212 M100 188 L135 212"
+            stroke="#9c6b3f" stroke-width="5" stroke-linecap="round" fill="none"/>
+    </g>
+    <!-- soil -->
+    <rect x="40" y="180" width="120" height="12" rx="4" fill="#7a4a24"/>
+    <!-- stem -->
+    <g class="part" data-part="stem"><rect x="95" y="70" width="10" height="112" rx="5" fill="#3a8a2a"/></g>
+    <!-- leaves -->
+    <g class="part" data-part="leaf">
+      <ellipse cx="70" cy="120" rx="30" ry="14" fill="#5cb338" transform="rotate(-20 70 120)"/>
+      <ellipse cx="130" cy="140" rx="30" ry="14" fill="#5cb338" transform="rotate(20 130 140)"/>
+    </g>
+    <!-- flower -->
+    <g class="part" data-part="flower">
+      <circle cx="100" cy="40" r="14" fill="#ffd23f"/>
+      <circle cx="100" cy="18" r="11" fill="#ff5e8a"/><circle cx="122" cy="40" r="11" fill="#ff5e8a"/>
+      <circle cx="100" cy="62" r="11" fill="#ff5e8a"/><circle cx="78" cy="40" r="11" fill="#ff5e8a"/>
+    </g>
+  </svg>
+
+  <script src="../../shared/common.js"></script>
+  <script>
+    const NAMES={ root:'root', stem:'stem', leaf:'leaf', flower:'flower' };
+    const ORDER=['flower','leaf','stem','root'];
+    const promptEl=document.getElementById('prompt'), scoreEl=document.getElementById('score');
+    let target, score=0, idx=0, locked=false;
+
+    function ask(){
+      locked=false;
+      target=ORDER[idx%ORDER.length]; idx++;
+      promptEl.textContent='Tap the ' + NAMES[target] + '!';
+      KidsAudio.speak('Tap the ' + NAMES[target]);
+    }
+    document.querySelectorAll('.part').forEach(g=>{
+      g.addEventListener('click',()=>{
+        if(locked) return; try{KidsAudio.getAudio();}catch(e){}
+        if(g.dataset.part===target){ locked=true; g.classList.add('flash'); score++; scoreEl.textContent='⭐ '+score;
+          KidsAudio.playChime('yay'); KidsAudio.speak('Yes! That is the ' + NAMES[target] + '!'); confetti();
+          setTimeout(()=>{ g.classList.remove('flash'); ask(); }, 1800);
+        } else { KidsAudio.playChime('uhoh'); KidsAudio.speak('Try again.'); }
+      });
+    });
+    function confetti(){ for(let i=0;i<20;i++){ const c=document.createElement('div'); c.className='confetti';
+      c.textContent=KidsUtil.rand(['🎉','⭐','✨','🌿','🌸']); c.style.left=Math.random()*100+'vw'; c.style.animationDelay=(Math.random()*0.4)+'s';
+      document.body.appendChild(c); setTimeout(()=>c.remove(),2100); } }
+    ask();
+  </script>
+</body>
+</html>

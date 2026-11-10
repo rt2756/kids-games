@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Fix the Pipes</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+
+<style>
+  body { --av-bg: linear-gradient(180deg,#1f4037,#3c8d7d); --av-ink: #fff; }
+    .board { display:grid; gap:3px; }
+    .pipe { border:none; padding:0; border-radius:12%; background:rgba(255,255,255,.14); cursor:pointer; overflow:hidden; }
+    .pipe svg { display:block; width:100%; height:100%; transition:transform .15s; }
+    .pipe line { stroke:#cfd8dc; stroke-width:24; stroke-linecap:butt; } .pipe circle { fill:#cfd8dc; }
+    .pipe.wet line { stroke:#38bdf8; } .pipe.wet circle { fill:#38bdf8; }
+    .pipe.src circle { fill:#0ea5e9; stroke:#fff; stroke-width:6; }
+    .pipe.hint { outline:5px solid #ffd93b; animation:av-pulse .8s ease-in-out infinite; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+
+  <script>
+    // Concept: spatial reasoning + connections. Tap a pipe to turn it; water
+    // flows from the tap through every joined pipe. The pipes are cut from one
+    // connected network and then spun, so every board can be fixed.
+    const K = KidsKit, A = KidsAudio;
+    const INTRO = 'Tap the pipes to turn them. Join them all up so the water reaches every pipe.';
+    const ui = K.setup();
+    const sub = K.el('div', 'av-sub av-hint', INTRO), fit = K.el('div', 'av-fit'), board = K.el('div', 'board'), bar = K.el('div', 'av-bar');
+    fit.appendChild(board); ui.stage.classList.add('av-puzzle'); ui.stage.append(sub, fit, bar);
+    sub.onclick = () => { K.wake(); K.say(INTRO); };
+    const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];     // bit 0 up, 1 right, 2 down, 3 left
+    let N, base, goal, rot, rot0, src, locked, timer, moves, first = true, nodes = [];
+    const mk = (label, fn) => { const b = K.el('button', 'av-btn', label); b.onclick = () => { K.wake(); fn(); }; bar.appendChild(b); };
+    mk('🔄 Again', () => { rot = rot0.slice(); moves = 0; locked = false; clearTimeout(timer); build(); });
+    mk('💡 Hint', () => { if (locked) return; const i = base.findIndex((_, k) => mask(k) !== goal[k]); if (i >= 0) nodes[i].classList.add('hint'); });
+
+    const turn = (m, r) => { for (let k = 0; k < r % 4; k++) m = ((m << 1) | (m >> 3)) & 15; return m; };
+    const mask = i => turn(base[i], rot[i]);
+    function flood() {
+      const wet = new Set([src]), q = [src];
+      while (q.length) {
+        const i = q.pop(), x = i % N, y = Math.floor(i / N), m = mask(i);
+        for (let d = 0; d < 4; d++) {
+          if (!(m & (1 << d))) continue;
+          const a = x + DX[d], b = y + DY[d];
+          if (a < 0 || a >= N || b < 0 || b >= N) continue;
+          const j = b * N + a;
+          if (!wet.has(j) && (mask(j) & (1 << ((d + 2) % 4)))) { wet.add(j); q.push(j); }
+        }
+      }
+      return wet;
+    }
+    function size() {
+      const s = Math.floor(Math.min(fit.clientWidth / N, fit.clientHeight / N, 130));
+      board.style.width = board.style.height = s * N + 'px';
+      board.style.gridTemplateColumns = board.style.gridTemplateRows = 'repeat(' + N + ', 1fr)';
+    }
+    function svg(m, isSrc) {
+      let s = '<svg viewBox="0 0 100 100">';
+      for (let d = 0; d < 4; d++) if (m & (1 << d)) s += '<line x1="50" y1="50" x2="' + (50 + 50 * DX[d]) + '" y2="' + (50 + 50 * DY[d]) + '"/>';
+      return s + '<circle cx="50" cy="50" r="' + (isSrc ? 24 : 13) + '"/></svg>';
+    }
+    function build() {
+      board.innerHTML = ''; nodes = [];
+      for (let i = 0; i < N * N; i++) {
+        const b = K.el('button', 'pipe' + (i === src ? ' src' : ''), svg(base[i], i === src));
+        b.onclick = () => tap(i);
+        nodes.push(b); board.appendChild(b);
+      }
+      draw(); size();
+    }
+    function draw() {
+      const wet = flood();
+      nodes.forEach((b, i) => { b.firstChild.style.transform = 'rotate(' + rot[i] * 90 + 'deg)'; b.classList.toggle('wet', wet.has(i)); });
+      sub.textContent = moves ? 'Joined: ' + wet.size + ' of ' + N * N : INTRO;
+      return wet.size === N * N;
+    }
+    function tap(i) {
+      if (locked) return;
+      K.wake(); nodes.forEach(b => b.classList.remove('hint'));
+      rot[i]++; moves++; A.playPop();
+      if (draw()) {
+        locked = true; K.star(); A.playChime('yay'); K.confetti(22, ['💧', '⭐', '✨', '🎉']);
+        const line = 'The water reaches every pipe! Well done!';
+        K.say(line); timer = setTimeout(() => L.win(), K.speakMs(line) + 900);
+      }
+    }
+    const L = K.levels('fix-the-pipes', ui, n => {
+      clearTimeout(timer);
+      N = Math.min(3 + Math.floor(n / 2), 7);
+      goal = Array(N * N).fill(0);
+      src = Math.floor(Math.random() * N * N);
+      const seen = new Set([src]), stack = [src];   // random spanning tree
+      while (stack.length) {
+        const i = stack[stack.length - 1], x = i % N, y = Math.floor(i / N);
+        const opts = [0, 1, 2, 3].filter(d => { const a = x + DX[d], b = y + DY[d]; return a >= 0 && a < N && b >= 0 && b < N && !seen.has(b * N + a); });
+        if (!opts.length || (stack.length > 1 && Math.random() < .25)) { stack.pop(); if (!stack.length && seen.size < N * N) stack.push([...seen][Math.floor(Math.random() * seen.size)]); continue; }
+        const d = opts[Math.floor(Math.random() * opts.length)], j = (y + DY[d]) * N + x + DX[d];
+        goal[i] |= 1 << d; goal[j] |= 1 << ((d + 2) % 4); seen.add(j); stack.push(j);
+      }
+      base = goal.slice(); moves = 0; locked = false;
+      do { rot = base.map(() => Math.floor(Math.random() * 4)); } while (flood().size === N * N);
+      rot0 = rot.slice();
+      build();
+      K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>
