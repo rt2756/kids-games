@@ -5,7 +5,8 @@
 //     mode:  'ball' | 'water' | 'rings',
 //     level: n => ({ n: colours-or-rings, cap: pieces per tube, empties }),
 //     intro: 'spoken + shown instruction',
-//     junior: true                   // name colours aloud, show where a ball can go
+//     junior: true,                  // name colours aloud, show where a ball can go
+//     group: true                    // ball mode: same-colour balls on top move together
 //   })
 //
 //   ball  — move the top ball onto the same colour or into an empty tube
@@ -22,6 +23,7 @@
 
   function start(o) {
     const rings = o.mode === 'rings', water = o.mode === 'water', junior = !!o.junior;
+    const group = water || (o.mode === 'ball' && !!o.group);   // move every touching piece of the top colour, as many as fit
     const ui = K.setup();
     const sub = K.el('div', 'av-sub av-hint', o.intro);
     const board = K.el('div', 'tb-board ' + o.mode);
@@ -48,7 +50,7 @@
       if (!s[b].length) return true;
       return rings ? top(s[b]) > top(s[a]) : top(s[b]) === top(s[a]);
     }
-    const amount = (s, a, b) => water ? Math.min(run(s[a]), cap - s[b].length) : 1;
+    const amount = (s, a, b) => group ? Math.min(run(s[a]), cap - s[b].length) : 1;
     const full = t => t.length === cap && t.every(x => x === t[0]);
     const solved = s => rings ? s[s.length - 1].length === n : s.every(t => !t.length || full(t));
 
@@ -156,7 +158,7 @@
           const p = K.el('div', rings ? 'tb-ring' : water ? 'tb-water' : 'tb-ball');
           p.style.setProperty('--c', COLOURS[(rings ? x - 1 : x) % COLOURS.length][1]);
           if (rings) p.style.width = (30 + 70 * x / n) + '%';
-          if (i === sel && !water && j === t.length - 1) p.style.transform = 'translateY(calc(var(--s) * ' + -(cap - t.length + 1.05) + '))';
+          if (i === sel && !water && j >= t.length - (group ? run(t) : 1)) p.style.transform = 'translateY(calc(var(--s) * ' + -(cap - t.length + 1.05) + '))';
           if (i === landed && !water && j >= t.length - landedK) p.classList.add('av-pop');
           g.appendChild(p);
         });

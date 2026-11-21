@@ -17,9 +17,10 @@
   <script src="../../shared/tubes.js"></script>
   <script>
     // Concept: sorting by colour. Few colours, short tubes, colours named aloud,
-    // and the tubes a ball may go into light up.
+    // the tubes a ball may go into light up, and balls of one colour on top
+    // move together in one tap.
     KidsTubes.start({
-      id: 'ball-sort-junior', mode: 'ball', junior: true,
+      id: 'ball-sort-junior', mode: 'ball', junior: true, group: true,
       intro: 'Put the same colours together. Tap a ball, then tap a tube.',
       level: n => n < 2 ? { n: 2, cap: 3, empties: 1 } : n < 5 ? { n: 3, cap: 3, empties: 2 }
         : n < 9 ? { n: 4, cap: 3, empties: 2 } : { n: Math.min(4 + Math.floor((n - 9) / 3), 6), cap: 4, empties: 2 }
