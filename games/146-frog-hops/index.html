@@ -22,11 +22,14 @@
     // Concept: the number line — adding is hopping forward, taking away is
     // hopping back. Say where the frog will land; then watch it hop and count.
     const K = KidsKit, A = KidsAudio;
-    const S = K.shell('', [['💡 Hint', () => pads[target] && pads[target].classList.add('av-glow')]]);
-    const line = K.el('div', 'nline'); S.fit.appendChild(line);
+    const S = K.shell('', [['💡 Hint', hint]]);
+    const line = K.el('div', 'nline'); S.group(line, S.bar);
     S.ui.setTitle('Frog hops');
     let lo, from, hop, target, frog, pads, round = 0, misses, locked, timer;
-    function size() { const s = Math.floor(Math.min(S.fit.clientWidth / 11, 96)); line.style.width = s * 11 + 'px'; line.style.height = Math.min(S.fit.clientHeight, s * 2.4) + 'px'; line.style.fontSize = Math.floor(s * .42) + 'px'; }
+    function size() { const r = S.room(line), s = Math.floor(Math.min(r.w / 11, 96)); line.style.width = s * 11 + 'px'; line.style.height = Math.min(r.h, s * 2.4) + 'px'; line.style.fontSize = Math.floor(s * .42) + 'px'; }
+    // A hint never lights up the landing pad (that gives the answer away); it
+    // lights the start pad and says how to count from it.
+    function hint() { if (locked) return; pads[from] && pads[from].classList.add('av-glow'); K.say('Start on ' + from + '. Count ' + hop + (hop === 1 ? ' hop' : ' hops') + (target < from ? ' back.' : ' forward.')); }
     function draw() { Object.keys(pads).forEach(n => { pads[n].firstChild.textContent = +n === frog ? '🐸' : ''; }); }
     function next() {
       clearTimeout(timer); misses = 0; locked = false;
@@ -42,7 +45,7 @@
     }
     function tap(n, node) {
       if (locked) return; K.wake();
-      if (n !== target) { K.wrong(node); K.say('Count ' + hop + ' hops from ' + from + '.'); if (++misses >= 2) pads[target].classList.add('av-glow'); return; }
+      if (n !== target) { K.wrong(node); K.say('Count ' + hop + ' hops from ' + from + '.'); ++misses; return; }
       locked = true; pads[target].classList.remove('av-glow');
       const dir = target > from ? 1 : -1; let done = 0;
       const tick = () => {

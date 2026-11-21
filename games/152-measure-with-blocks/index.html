@@ -26,11 +26,11 @@
     const THINGS = [['✏️', 'pencil', '#facc15'], ['🐍', 'snake', '#22c55e'], ['🚂', 'train', '#ef4444'], ['🐛', 'caterpillar', '#84cc16'], ['🥖', 'bread', '#d97706'], ['🪈', 'flute', '#a16207'], ['🦎', 'lizard', '#14b8a6']];
     const NUM = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
     const S = K.shell('', []);
-    const box = K.el('div', 'ruler', '<div class="thing"></div><div class="blocks"></div>'); S.fit.appendChild(box);
+    const box = K.el('div', 'ruler', '<div class="thing"></div><div class="blocks"></div>'); S.group(box, S.bar);
     const thing = box.firstChild, blocks = box.lastChild;
     S.ui.setTitle('Measure with blocks');
     let n, got, cur, round = 0, locked, timer;
-    function size() { const u = Math.floor(Math.min(S.fit.clientWidth / 10.4, S.fit.clientHeight / 3.4, 84)); box.style.fontSize = u + 'px'; }
+    function size() { const r = S.room(box), u = Math.floor(Math.min(r.w / 10.4, r.h / 3.4, 84)); box.style.fontSize = u + 'px'; }
     function draw() {
       thing.style.width = n + 'em'; thing.style.background = cur[2]; thing.innerHTML = '<span>' + cur[0] + '</span>';
       blocks.innerHTML = [...Array(got)].map((_, i) => '<i class="' + (i === got - 1 ? 'av-pop' : '') + '">' + (i + 1) + '</i>').join('');

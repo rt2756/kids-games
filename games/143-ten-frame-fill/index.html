@@ -12,6 +12,8 @@
   .tf { border:2px solid #333; background:#fff; padding:0; cursor:pointer; position:relative; }
   .tf.red::after, .tf.yel::after { content:''; position:absolute; inset:13%; border-radius:50%; background:#ef4444; box-shadow:inset -4px -5px 0 rgba(0,0,0,.18); }
   .tf.yel::after { background:#facc15; }
+  .av-group > .av-choices { margin:0; }
+  .av-group > .av-choices:empty { display:none; }
   /* the number to make, big and always on screen so it is not forgotten */
   .goal { align-self:center; display:flex; align-items:center; gap:.25em; background:#fff; color:#1e293b; border-radius:22px;
     padding:.08em .55em; font-weight:900; font-size:clamp(52px,14vmin,110px); line-height:1.15; box-shadow:0 6px 0 rgba(0,0,0,.18); cursor:pointer; }
@@ -26,7 +28,6 @@
     .goal { flex-shrink:0; font-size:clamp(34px,11vh,56px); }
     .av-puzzle .av-fit { min-width:0; }  /* let the frame area shrink so the equation and buttons fit beside it */
     .av-puzzle .av-choices { flex-direction:column; flex-shrink:0; gap:8px; margin:0; }
-    .av-puzzle .av-choices:empty { display:none; }
     .av-puzzle .av-choices .av-choice { width:clamp(56px,17vh,76px); height:clamp(48px,15vh,64px); min-height:0; padding:0; }
     .av-puzzle .av-choices .av-choice .e { font-size:clamp(26px,9vh,40px); }
   }
@@ -42,11 +43,11 @@
     const K = KidsKit, A = KidsAudio;
     const W = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
     const S = K.shell('', []);
-    const frame = K.el('div', 'frame'), row = K.el('div', 'av-choices'), goal = K.el('div', 'goal'); S.fit.appendChild(frame); S.ui.stage.insertBefore(row, S.bar); S.ui.stage.insertBefore(goal, S.fit);
+    const frame = K.el('div', 'frame'), row = K.el('div', 'av-choices'), goal = K.el('div', 'goal'); S.group(frame, row); S.ui.stage.insertBefore(goal, S.fit);
     goal.onclick = () => { K.wake(); K.say(S.intro); };
     S.ui.setTitle('Ten frame');
     let fixed, added, want, kind, round = 0, misses, locked, timer, prev = -1;
-    function size() { const s = Math.floor(Math.min(S.fit.clientWidth / 5, S.fit.clientHeight / 2, 140)); frame.style.width = s * 5 + 'px'; frame.style.height = s * 2 + 'px'; }
+    function size() { const r = S.room(frame), s = Math.floor(Math.min(r.w / 5, r.h / 2, 140)); frame.style.width = s * 5 + 'px'; frame.style.height = s * 2 + 'px'; }
     function draw() {
       [...frame.children].forEach((c, i) => { c.className = 'tf' + (i < fixed ? ' red' : i < fixed + added ? ' yel' : ''); });
     }
@@ -69,7 +70,7 @@
           const b = K.el('button', 'av-choice', '<span class="e">' + o + '</span>');
           b.onclick = () => { if (locked) return; K.wake();
             if (o === want) { locked = true; b.classList.add('right'); added = want; draw(); showGoal(sum(n, want, 10, 'y')); timer = K.won('Yes! ' + W[n] + ' and ' + W[want] + ' make ten.', next); }
-            else { K.wrong(b); K.say('Count the empty boxes.'); if (++misses >= 2) [...row.children].forEach(x => { if (x._ok) x.classList.add('hint'); }); } };
+            else { K.wrong(b); K.say('Count the empty boxes.'); ++misses; } };   // never light up the right answer: the child must count
           b._ok = o === want; row.appendChild(b);
         });
       } else {

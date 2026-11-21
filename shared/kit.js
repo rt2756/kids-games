@@ -295,7 +295,17 @@
     ui.stage.classList.add('av-puzzle');
     const sub = el('div', 'av-sub av-hint', intro), fit = el('div', 'av-fit'), bar = el('div', 'av-bar');
     ui.stage.append(sub, fit, bar);
-    const S = { ui, sub, fit, bar, intro, button(label, fn) { const b = el('button', 'av-btn', label); b.onclick = () => { wake(); fn(b); }; bar.appendChild(b); return b; } };
+    const S = { ui, sub, fit, bar, intro, button(label, fn) { const b = el('button', 'av-btn', label); b.onclick = () => { wake(); fn(b); }; bar.appendChild(b); return b; },
+      // Put the board and its buttons together in the middle of the screen (in this order),
+      // instead of leaving the buttons at the very bottom.
+      group(...nodes) { fit.classList.add('av-group'); fit.append(...nodes); },
+      // Room left for the board once the other things grouped with it are laid out.
+      room(board) {
+        const cs = getComputedStyle(fit), row = cs.flexDirection.indexOf('row') === 0, gap = parseFloat(row ? cs.columnGap : cs.rowGap) || 0;
+        let w = fit.clientWidth, h = fit.clientHeight;
+        [...fit.children].forEach(c => { if (c === board || getComputedStyle(c).display === 'none') return; const r = c.getBoundingClientRect(); if (row) w -= r.width + gap; else h -= r.height + gap; });
+        return { w: Math.max(0, w), h: Math.max(0, h) };
+      } };
     sub.onclick = () => { wake(); say(S.intro); };
     (buttons || []).forEach(b => S.button(b[0], b[1]));
     return S;

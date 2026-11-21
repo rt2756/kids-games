@@ -66,6 +66,8 @@ html[data-theme="dark"] .av-choice.right { background: #9be07c; }
 .av-fit { flex: 1; min-height: 0; align-self: stretch; display: flex; align-items: center; justify-content: center; }
 .av-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .av-bar .av-btn { font-size: clamp(14px, 3.4vmin, 19px); padding: 10px 18px; }
+/* S.group(): the board and its buttons sit together, centred, instead of the buttons at the very bottom. */
+.av-fit.av-group { flex-direction: column; gap: clamp(12px, 3vh, 28px); }
 /* Short and wide (a phone on its side): board on the left, buttons stacked on the right. */
 @media (max-height: 500px) and (orientation: landscape) {
   body.av:has(.av-puzzle) { padding-top: 58px; }
@@ -75,6 +77,7 @@ html[data-theme="dark"] .av-choice.right { background: #9be07c; }
   .av-puzzle .av-hint { display: none; }
   .av-puzzle .av-bar { flex-direction: column; flex-wrap: wrap; align-content: center; max-height: 100%; gap: 8px; }
   .av-puzzle .av-bar .av-btn { font-size: 14px; padding: 8px 14px; }
+  .av-puzzle .av-fit.av-group { flex-direction: row; min-width: 0; gap: 12px; }
 }
 .av-drag { z-index: 50; transition: none !important; filter: drop-shadow(0 8px 10px rgba(0,0,0,.35)); cursor: grabbing; }
 .av-glow { outline: 5px solid #ffd93b; outline-offset: 2px; animation: av-pulse .8s ease-in-out infinite; z-index: 4; }

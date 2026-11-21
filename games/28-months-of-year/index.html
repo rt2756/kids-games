@@ -106,7 +106,8 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    padding: 8px 0 16px;
+    padding: 8px 0 0;
+    cursor: default;
   }
   #autoBtn {
     border: none;
@@ -131,6 +132,14 @@
     text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
   }
 
+  /* phone on its side: smaller picture, button and hint side by side so all of it fits */
+  @media (max-height: 500px) {
+    #playarea { padding-top: 64px; }
+    #stage { gap: 8px; }
+    .pic { font-size: clamp(40px, 16vh, 80px); }
+    #footer { flex-direction: row; gap: 14px; padding: 0; }
+    #autoBtn { padding: 8px 20px; font-size: 18px; }
+  }
   .confetti {
     position: fixed;
     font-size: 30px;
@@ -150,11 +159,11 @@
     <div id="stage">
       <div class="pic" id="pic">❄️</div>
       <div class="card"><div class="monthname" id="monthname">January</div></div>
+      <div id="footer">
+        <button id="autoBtn">▶ Sing the months</button>
+        <div id="hint">Tap anywhere for the next month!</div>
+      </div>
     </div>
-  </div>
-  <div id="footer">
-    <button id="autoBtn">▶ Sing the months</button>
-    <div id="hint">Tap anywhere for the next month!</div>
   </div>
 
   <script src="../../shared/common.js"></script>
@@ -242,7 +251,8 @@
     });
 
     // Tap the play area to advance. Manual tap stops auto play.
-    document.getElementById('playarea').addEventListener('pointerdown', () => {
+    document.getElementById('playarea').addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#footer')) return;   // the button sits in the play area now
       try { KidsAudio.getAudio(); } catch (e) {}
       stopAuto();
       advance();
