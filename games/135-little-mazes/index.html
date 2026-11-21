@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Little Mazes</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#134e5e,#71b280); --av-ink: #fff; }
+  .maze { display:grid; background:rgba(0,0,0,.28); border-radius:8px; cursor:pointer; user-select:none; }
+  .mz { border:var(--w,3px) solid transparent; display:flex; align-items:center; justify-content:center; line-height:1; font-size:inherit; min-width:0; min-height:0; }
+  .mz.seen { background:rgba(255,224,102,.35); }
+  .mz.av-glow { outline:none; background:rgba(255,217,59,.75); animation:none; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: planning a path. Slide a finger (or tap, or use the arrow keys)
+    // to walk the mouse through the maze to the cheese. Mazes are carved from a
+    // full grid, so there is always exactly one way through.
+    const K = KidsKit, A = KidsAudio;
+    const SIZES = [3, 4, 5, 6, 7, 8, 10, 12, 14];
+    const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];     // bit 0 up, 1 right, 2 down, 3 left
+    const INTRO = 'Help the mouse find the cheese! Slide your finger along the path.';
+    const S = K.shell(INTRO, [['🔄 Again', () => L.go(L.n)], ['💡 Hint', hint]]);
+    const board = K.el('div', 'maze'); S.fit.appendChild(board);
+    let N, open, at, goal, seen, locked, timer, cells, first = true;
+    function path(from) {                            // breadth-first route to the cheese
+      const prev = { [from]: -1 }, q = [from];
+      while (q.length) { const c = q.shift(); if (c === goal) break;
+        for (let d = 0; d < 4; d++) if (open[c] & (1 << d)) { const j = c + DX[d] + DY[d] * N; if (!(j in prev)) { prev[j] = c; q.push(j); } } }
+      const out = []; for (let c = goal; c !== from; c = prev[c]) out.unshift(c); return out;
+    }
+    function size() {
+      const s = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight, 720) / N);
+      board.style.width = board.style.height = s * N + 'px'; board.style.gridTemplateColumns = board.style.gridTemplateRows = 'repeat(' + N + ',1fr)';
+      board.style.fontSize = Math.floor(s * .6) + 'px'; board.style.setProperty('--w', Math.max(2, Math.round(s * .07)) + 'px');
+    }
+    function draw() {
+      cells.forEach((c, i) => { c.textContent = i === at ? '🐭' : i === goal ? '🧀' : ''; c.classList.toggle('seen', seen.has(i)); });
+    }
+    function step(to) {
+      if (locked || to === at) return false;
+      const d = [-N, 1, N, -1].indexOf(to - at);
+      if (d < 0 || !(open[at] & (1 << d)) || (d % 2 && Math.floor(to / N) !== Math.floor(at / N))) return false;
+      at = to; seen.add(at); cells.forEach(c => c.classList.remove('av-glow')); K.tone(500 + (seen.size % 8) * 40, .07, .12);
+      draw();
+      if (at === goal) { locked = true; timer = K.won('Yum! The mouse found the cheese!', () => L.win()); }
+      return true;
+    }
+    function hint() { if (!locked) path(at).slice(0, Math.max(2, Math.ceil(N / 2))).forEach(c => cells[c].classList.add('av-glow')); }
+    function point(e) {
+      const r = board.getBoundingClientRect(), x = Math.floor((e.clientX - r.left) / r.width * N), y = Math.floor((e.clientY - r.top) / r.height * N);
+      if (x < 0 || y < 0 || x >= N || y >= N) return;
+      const to = y * N + x;
+      if (!step(to) && to !== at && e.type === 'pointerdown') {   // tapped further away: walk there if it is straight down a corridor
+        const r2 = path(at); const k = r2.indexOf(to); if (k >= 0 && k < 4) r2.slice(0, k + 1).forEach(step);
+      }
+    }
+    board.style.touchAction = 'none';
+    board.addEventListener('pointerdown', e => { K.wake(); point(e); board.onpointermove = point; });
+    addEventListener('pointerup', () => { board.onpointermove = null; });
+    addEventListener('keydown', e => { const d = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'].indexOf(e.key); if (d >= 0) { e.preventDefault(); step(at + [-N, 1, N, -1][d]); } });
+    const L = K.levels('little-mazes', S.ui, n => {
+      clearTimeout(timer);
+      N = SIZES[Math.min(n, SIZES.length - 1)];
+      open = Array(N * N).fill(0);
+      const done = new Set([0]), stack = [0];
+      while (stack.length) {
+        const c = stack[stack.length - 1], x = c % N, y = Math.floor(c / N);
+        const opts = [0, 1, 2, 3].filter(d => { const a = x + DX[d], b = y + DY[d]; return a >= 0 && a < N && b >= 0 && b < N && !done.has(b * N + a); });
+        if (!opts.length) { stack.pop(); continue; }
+        const d = opts[Math.floor(Math.random() * opts.length)], j = c + DX[d] + DY[d] * N;
+        open[c] |= 1 << d; open[j] |= 1 << ((d + 2) % 4); done.add(j); stack.push(j);
+      }
+      at = 0; goal = N * N - 1; seen = new Set([0]); locked = false;
+      board.innerHTML = '';
+      cells = open.map(m => { const c = K.el('div', 'mz'); ['Top', 'Right', 'Bottom', 'Left'].forEach((s, d) => { if (!(m & (1 << d))) c.style['border' + s + 'Color'] = '#fff'; }); board.appendChild(c); return c; });
+      size(); draw();
+      K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

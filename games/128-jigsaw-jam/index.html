@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Jigsaw Jam</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#43cea2,#185a9d); --av-ink: #fff; }
+  .jig { position:relative; border-radius:16px; background:rgba(0,0,0,.25); }
+  .pc { position:absolute; box-sizing:border-box; border:3px solid #fff; border-radius:12px; cursor:grab; background-repeat:no-repeat; }
+  .pc.home { border-color:transparent; border-radius:0; cursor:default; }
+  .jig.done .pc { border:none; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: part and whole. The picture is cut into squares and mixed up;
+    // drag a piece onto another to swap them (or tap one, then the other).
+    // Pieces lock when they are home, so it can only get more finished.
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const PICS = [['🦁', 'a lion', '#ffe29a,#ffa751'], ['🚗', 'a car', '#a1c4fd,#c2e9fb'], ['🍎', 'an apple', '#d4fc79,#96e6a1'],
+      ['🐘', 'an elephant', '#e0c3fc,#8ec5fc'], ['🚂', 'a train', '#fbc2eb,#a6c1ee'], ['🦋', 'a butterfly', '#fdfbfb,#a8edea'],
+      ['🐠', 'a fish', '#89f7fe,#66a6ff'], ['🌻', 'a sunflower', '#c1dfc4,#f6d365'], ['🚀', 'a rocket', '#a18cd1,#fbc2eb'], ['🐢', 'a turtle', '#fff1eb,#ace0f9']];
+    const SIZES = [[2, 1], [3, 1], [2, 2], [3, 2], [3, 3], [4, 3], [4, 4], [5, 4], [5, 5]];
+    const INTRO = 'Fix the picture! Drag a piece to where it belongs.';
+    const S = K.shell(INTRO, [['🔄 Again', () => L.go(L.n)], ['💡 Hint', hint]]);
+    const board = K.el('div', 'jig'); S.fit.appendChild(board);
+    const draw = K.bag(PICS);
+    let cols, rows, order, img, pic, locked, timer, pick = -1, glow = [], first = true;
+
+    function picture(p) {                            // gradient + speckles + one big emoji, as an image
+      const c = document.createElement('canvas'); c.width = c.height = 600;
+      const x = c.getContext('2d'), col = p[2].split(','), g = x.createLinearGradient(0, 0, 600, 600);
+      g.addColorStop(0, col[0]); g.addColorStop(1, col[1]); x.fillStyle = g; x.fillRect(0, 0, 600, 600);
+      x.fillStyle = 'rgba(255,255,255,.5)';
+      for (let i = 0; i < 16; i++) { x.beginPath(); x.arc(Math.random() * 600, Math.random() * 600, 10 + Math.random() * 28, 0, 7); x.fill(); }
+      x.font = '400px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(p[0], 300, 330);
+      return c.toDataURL();
+    }
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight, 640)); board.style.width = board.style.height = s + 'px'; }
+    function render() {
+      board.innerHTML = '';
+      order.forEach((id, pos) => {
+        const p = K.el('div', 'pc' + (id === pos ? ' home' : '') + (pos === pick || glow.includes(pos) ? ' av-glow' : ''));
+        p.style.cssText = 'left:' + (pos % cols) * 100 / cols + '%;top:' + Math.floor(pos / cols) * 100 / rows + '%;width:' + 100 / cols + '%;height:' + 100 / rows + '%;'
+          + 'background-image:url(' + img + ');background-size:' + cols * 100 + '% ' + rows * 100 + '%;'
+          + 'background-position:' + (cols > 1 ? (id % cols) / (cols - 1) * 100 : 0) + '% ' + (rows > 1 ? Math.floor(id / cols) / (rows - 1) * 100 : 0) + '%';
+        if (id !== pos) K.drag(p, {
+          can: () => !locked,
+          drop: (x, y) => { const r = board.getBoundingClientRect(); if (!K.over(x, y, board)) return;
+            swap(pos, Math.min(rows - 1, Math.floor((y - r.top) / r.height * rows)) * cols + Math.min(cols - 1, Math.floor((x - r.left) / r.width * cols))); },
+          tap: () => { if (pick < 0) { pick = pos; A.playPop(); render(); } else swap(pick, pos); }
+        });
+        board.appendChild(p);
+      });
+    }
+    function swap(a, b) {
+      pick = -1; glow = [];
+      if (a === b || order[a] === a || order[b] === b) return render();
+      [order[a], order[b]] = [order[b], order[a]];
+      A.playPop();
+      if (order[a] === a || order[b] === b) K.tone(880, .18, .25);
+      render();
+      if (order.every((id, pos) => id === pos)) {
+        locked = true; board.classList.add('done');
+        timer = K.won('You fixed it! It is ' + pic[1] + '!', () => L.win());
+      }
+    }
+    function hint() {
+      if (locked) return;
+      const pos = order.findIndex((id, p) => id !== p);
+      glow = [pos, order.indexOf(pos)]; pick = -1; render();
+    }
+    const L = K.levels('jigsaw-jam', S.ui, n => {
+      clearTimeout(timer);
+      [cols, rows] = SIZES[Math.min(n, SIZES.length - 1)];
+      pic = draw(); img = picture(pic); locked = false; pick = -1; glow = []; board.classList.remove('done');
+      do { order = U.shuffle(order = [...Array(cols * rows).keys()]); } while (order.some((id, pos) => id === pos));
+      size(); render();
+      K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

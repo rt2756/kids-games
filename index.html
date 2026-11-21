@@ -155,12 +155,19 @@
         return a.slice(0, n);
       }
 
+      // "Play again" follows the age chip: on 5–6 it lists only recently played
+      // 5–6 games, and it is left out when none of that age has been played.
+      function playAgain() {
+        const recent = Object.keys(plays).filter(s => bySlug[s] && matches(bySlug[s])).sort((a, b) => plays[b].t - plays[a].t).slice(0, 8).map(s => bySlug[s]);
+        return recent.length ? head('🕘', 'Play again') + strip(recent) : '';
+      }
       function personalShelves() {
+        const home = state.age === window.KIDS_DEFAULT_BUCKET || state.age === 'all';
         let html = '';
         const favGames = favs.map(s => bySlug[s]).filter(Boolean);
-        if (favGames.length) html += head('⭐', 'Favourites', favGames.length) + strip(favGames);
-        const recent = Object.keys(plays).filter(s => bySlug[s]).sort((a, b) => plays[b].t - plays[a].t).slice(0, 8).map(s => bySlug[s]);
-        if (recent.length) html += head('🕘', 'Play again') + strip(recent);
+        if (home && favGames.length) html += head('⭐', 'Favourites', favGames.length) + strip(favGames);
+        html += playAgain();
+        if (!home) return html;
         const justRight = GAMES.filter(g => g.min === PLAY_AGE || g.min === PLAY_AGE - 1);
         // Lead with games not opened yet, so the row keeps surfacing new things.
         const fresh = justRight.filter(g => !plays[g.slug]);
@@ -201,7 +208,7 @@
         let html = '';
         if (state.subject === 'all') {
           // Age view: one shelf per age, grouped by subject inside it.
-          if (state.age === window.KIDS_DEFAULT_BUCKET || state.age === 'all') html += personalShelves();
+          html += personalShelves();
           BUCKETS.filter(b => state.age === 'all' || b.id === state.age).forEach(b => {
             const items = list.filter(g => g.bucket === b.id);
             html += head(b.emoji, b.label, items.length, b.age)

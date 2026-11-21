@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Hindi Shabd</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#ffecd2,#fcb69f); --av-ink: #7a2e0e; }
+
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: everyday Hindi words — colours, fruit, animals, body, home.
+    const K = KidsKit;
+    const W = [['🔴', 'लाल', 'laal', 'red'], ['🔵', 'नीला', 'neela', 'blue'], ['🟡', 'पीला', 'peela', 'yellow'], ['🟢', 'हरा', 'hara', 'green'],
+      ['🍎', 'सेब', 'seb', 'apple'], ['🍌', 'केला', 'kela', 'banana'], ['🥭', 'आम', 'aam', 'mango'], ['🍇', 'अंगूर', 'angoor', 'grapes'],
+      ['🐶', 'कुत्ता', 'kutta', 'dog'], ['🐱', 'बिल्ली', 'billi', 'cat'], ['🐄', 'गाय', 'gaay', 'cow'], ['🐘', 'हाथी', 'haathi', 'elephant'],
+      ['🦁', 'शेर', 'sher', 'lion'], ['🐒', 'बंदर', 'bandar', 'monkey'], ['👃', 'नाक', 'naak', 'nose'], ['👂', 'कान', 'kaan', 'ear'],
+      ['👁️', 'आँख', 'aankh', 'eye'], ['✋', 'हाथ', 'haath', 'hand'], ['💧', 'पानी', 'paani', 'water'], ['🥛', 'दूध', 'doodh', 'milk'],
+      ['🏠', 'घर', 'ghar', 'house'], ['🌸', 'फूल', 'phool', 'flower'], ['☀️', 'सूरज', 'sooraj', 'sun'], ['🌙', 'चाँद', 'chaand', 'moon']]
+      .map(a => ({ e: a[0], word: a[1], roman: a[2], en: a[3] }));
+    const hi = (text, roman) => ({ text, roman, hindi: true });
+    K.flashQuiz({
+      title: 'हिंदी शब्द · Hindi words',
+      items: W,
+      card: it => '<div class="av-big">' + it.e + '</div><div class="av-word">' + it.word + '</div><div class="av-sub">' + it.roman + ' · ' + it.en + '</div>',
+      say: it => hi(it.word, it.roman),
+      ask: it => ({ show: '<div class="av-word">' + it.word + '</div><div class="av-sub">' + it.roman + ' · 🔊 tap to hear again</div>', say: hi(it.word + ' कहाँ है?', 'Where is ' + it.roman + '?') }),
+      choice: it => K.card(it.e),
+      praise: it => hi('शाबाश! ' + it.word + '!', 'Shabaash! ' + it.roman + '!'),
+    });
+  </script>
+</body>
+</html>

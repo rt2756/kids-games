@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Snakes & Ladders</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#11998e,#38ef7d); --av-ink: #073b2a; }
+  .snl { position:relative; display:grid; grid-template-columns:repeat(6,1fr); grid-template-rows:repeat(5,1fr); border-radius:12px; overflow:hidden; box-shadow:0 8px 20px rgba(0,0,0,.25); }
+  .snl .sq { background:#fff8e1; position:relative; display:flex; align-items:center; justify-content:center; min-width:0; min-height:0; }
+  .snl .sq.alt { background:#ffe0a3; }
+  .snl .sq b { position:absolute; top:4%; left:7%; color:#7a5a1e; font-size:1em; }
+  .snl .sq span { font-size:2.4em; line-height:1; position:relative; z-index:2; white-space:nowrap; }
+  .snl svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; opacity:.85; }
+  .dice { width:64px; height:64px; border:none; border-radius:14px; background:#fff; display:grid; grid-template-columns:repeat(3,1fr); gap:3px; padding:9px; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.2); }
+  .dice i { border-radius:50%; } .dice i.d { background:#222; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: counting on with a die, and taking turns. Roll, hop that many
+    // squares, climb ladders, slide down snakes. Play against Teddy or with a
+    // second player. Nobody is sent back at the top — landing past it wins.
+    const K = KidsKit, A = KidsAudio;
+    const COLS = 6, ROWS = 5, END = 30;
+    const JUMP = { 3: 14, 9: 20, 16: 27, 12: 4, 22: 10, 29: 18 };
+    const DICE = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+    const WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six'];
+    const INTRO = 'Roll the dice and hop to the top! Ladders go up, snakes go down.';
+    const S = K.shell(INTRO, []);
+    const board = K.el('div', 'snl'); S.fit.appendChild(board);
+    const die = K.el('button', 'dice'); S.bar.appendChild(die);
+    const modeB = S.button('🧸 vs Teddy', () => { two = !two; modeB.textContent = two ? '👥 Two players' : '🧸 vs Teddy'; reset(); });
+    S.button('🔄 Again', reset);
+    let pos, turn, busy, two = false, timer, cells = {};
+    const xy = n => { const r = Math.floor((n - 1) / COLS), c = (n - 1) % COLS; return [(r % 2 ? COLS - 1 - c : c) + .5, ROWS - 1 - r + .5]; };
+    function build() {
+      let svg = '<svg viewBox="0 0 ' + COLS + ' ' + ROWS + '">';
+      Object.keys(JUMP).forEach(k => {
+        const [x1, y1] = xy(+k), [x2, y2] = xy(JUMP[k]), dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy), nx = -dy / len * .13, ny = dx / len * .13;
+        if (JUMP[k] > +k) {                         // ladder: two rails and rungs
+          svg += '<g stroke="#8b5a2b" stroke-width=".07" stroke-linecap="round"><line x1="' + (x1 + nx) + '" y1="' + (y1 + ny) + '" x2="' + (x2 + nx) + '" y2="' + (y2 + ny) + '"/><line x1="' + (x1 - nx) + '" y1="' + (y1 - ny) + '" x2="' + (x2 - nx) + '" y2="' + (y2 - ny) + '"/>';
+          for (let t = .1; t < .95; t += .28 / len) svg += '<line x1="' + (x1 + dx * t + nx) + '" y1="' + (y1 + dy * t + ny) + '" x2="' + (x1 + dx * t - nx) + '" y2="' + (y1 + dy * t - ny) + '"/>';
+          svg += '</g>';
+        } else {                                    // snake: a wavy line with a head at the top
+          let d = 'M' + x1 + ' ' + y1;
+          for (let i = 1; i <= 24; i++) { const t = i / 24, w = Math.sin(t * Math.PI * 4) * .16 * (1 - t * .3); d += ' L' + (x1 + dx * t + nx / .13 * w).toFixed(3) + ' ' + (y1 + dy * t + ny / .13 * w).toFixed(3); }
+          svg += '<path d="' + d + '" fill="none" stroke="#e11d48" stroke-width=".15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + x1 + '" cy="' + y1 + '" r=".14" fill="#e11d48"/><circle cx="' + (x1 - .05) + '" cy="' + (y1 - .04) + '" r=".03" fill="#fff"/><circle cx="' + (x1 + .05) + '" cy="' + (y1 - .04) + '" r=".03" fill="#fff"/>';
+        }
+      });
+      board.innerHTML = '';
+      for (let r = ROWS - 1; r >= 0; r--) for (let c = 0; c < COLS; c++) {
+        const n = r * COLS + (r % 2 ? COLS - 1 - c : c) + 1;
+        cells[n] = K.el('div', 'sq' + ((r + c) % 2 ? ' alt' : ''), '<b>' + (n === END ? '🏁' : n) + '</b><span></span>');
+        board.appendChild(cells[n]);
+      }
+      board.insertAdjacentHTML('beforeend', svg + '</svg>');
+    }
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth / COLS, S.fit.clientHeight / ROWS, 130)); board.style.width = s * COLS + 'px'; board.style.height = s * ROWS + 'px'; board.style.fontSize = Math.floor(s * .2) + 'px'; }
+    function draw() {
+      for (let n = 1; n <= END; n++) cells[n].lastChild.textContent = (pos[0] === n ? '🐰' : '') + (pos[1] === n ? '🧸' : '');
+      S.sub.textContent = busy ? S.sub.textContent : (turn === 0 ? '🐰 Your turn — tap the dice!' : two ? '🧸 Player two — tap the dice!' : '🧸 Teddy is rolling…');
+      die.classList.toggle('av-glow', !busy && (turn === 0 || two));
+    }
+    function face(v) { die.innerHTML = [...Array(9).keys()].map(k => '<i' + (DICE[v].includes(k) ? ' class="d"' : '') + '></i>').join(''); }
+    function roll() {
+      if (busy) return; busy = true; draw();
+      let spins = 0; const v = 1 + Math.floor(Math.random() * 6);
+      const spin = setInterval(() => { face(1 + Math.floor(Math.random() * 6)); K.tone(300 + spins * 40, .05, .1); if (++spins > 7) { clearInterval(spin); face(v); hop(v); } }, 80);
+    }
+    function hop(v) {
+      const who = turn === 0 ? '🐰' : '🧸';
+      S.sub.textContent = who + ' rolled ' + v + '!'; K.say(WORDS[v] + '!');
+      let left = v;
+      const go = setInterval(() => {
+        if (left-- > 0 && pos[turn] < END) { pos[turn]++; K.tone(520 + (v - left) * 50, .1, .2); S.sub.textContent = who + ' ' + (v - left); busy = false; draw(); busy = true; return; }
+        clearInterval(go);
+        const to = JUMP[pos[turn]];
+        if (to) {
+          const up = to > pos[turn]; K.say(up ? 'A ladder! Climb up!' : 'A snake! Slide down.'); K.tone(up ? 400 : 900, .5, .25, 'sine', 0, up ? 1000 : 250);
+          timer = setTimeout(() => { pos[turn] = to; end(); }, 900);
+        } else end();
+      }, 430);
+    }
+    function end() {
+      busy = false;
+      if (pos[turn] >= END) {
+        busy = true; draw();
+        if (turn === 0 || two) timer = K.won((turn === 0 ? 'You' : 'Player two') + ' reached the top! Hooray!', reset);
+        else { const l = 'Teddy got there first. Good game! Let us play again.'; A.playChime('yay'); K.say(l); timer = setTimeout(reset, K.speakMs(l) + 800); }
+        return;
+      }
+      turn = 1 - turn; draw();
+      if (turn === 1 && !two) timer = setTimeout(roll, 1300);
+    }
+    function reset() { clearTimeout(timer); pos = [0, 0]; turn = 0; busy = false; face(1); draw(); }
+    die.onclick = () => { K.wake(); if (turn === 0 || two) roll(); };
+    build(); size(); reset(); K.say(INTRO);
+    addEventListener('resize', size);
+  </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Line Them Up</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#1a2a6c,#b21f1f); --av-ink: #fff; }
+  .grid { display:grid; gap:5px; }
+  .gc { border:none; border-radius:16%; background:rgba(255,255,255,.9); font-size:inherit; line-height:1; padding:0; cursor:pointer; min-width:0; min-height:0; }
+  .grid.four { background:#1e3a8a; padding:5px; border-radius:16px; box-sizing:content-box; } .grid.four .gc { border-radius:50%; background:#e8eefc; }
+  .gc.win { background:#ffe066 !important; animation:av-pulse .8s ease-in-out infinite; } .gc.wrong { animation:av-shake .35s; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: strategy — taking turns, making a line, and blocking the other
+    // player. Two folk games: three in a row on a 3x3 board, and four in a row
+    // where pieces drop down a column. Teddy gets a little cleverer each time
+    // the child wins, and easier again after a loss.
+    const K = KidsKit, A = KidsAudio;
+    const S = K.shell('', []);
+    const modes = K.el('div', 'av-modes'); S.ui.stage.insertBefore(modes, S.sub);
+    const board = K.el('div', 'grid'); S.fit.appendChild(board);
+    S.ui.setTitle('Line them up!');
+    let four = false, two = false, W, H, need, g, turn, over, skill = 0, timer, lines;
+    [['⭕ Three in a row', false], ['🔴 Four in a row', true]].forEach(([label, f], i) => {
+      const b = K.el('button', 'av-btn' + (i ? '' : ' on'), label);
+      b.onclick = () => { K.wake(); four = f; modes.querySelectorAll('.av-btn').forEach(x => x.classList.toggle('on', x === b)); reset(true); };
+      modes.appendChild(b);
+    });
+    const who = S.button('🧸 vs Teddy', () => { two = !two; who.textContent = two ? '👥 Two players' : '🧸 vs Teddy'; reset(true); });
+    S.button('🔄 Again', () => reset(true));
+    const mark = p => four ? (p === 1 ? '🔴' : '🟡') : (p === 1 ? '❌' : '⭕');
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth / W, S.fit.clientHeight / H, 150)); board.style.width = s * W + 'px'; board.style.height = s * H + 'px'; board.style.gridTemplateColumns = 'repeat(' + W + ',1fr)'; board.style.gridTemplateRows = 'repeat(' + H + ',1fr)'; board.style.fontSize = Math.floor(s * .6) + 'px'; }
+    function winner(b) { for (const l of lines) { const p = b[l[0]]; if (p && l.every(i => b[i] === p)) return l; } return null; }
+    const moves = b => four ? [...Array(W).keys()].filter(c => !b[c]).map(c => { let r = H - 1; while (b[r * W + c]) r--; return r * W + c; }) : b.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+    function pickMove() {
+      const ms = moves(g), rnd = () => ms[Math.floor(Math.random() * ms.length)];
+      const wins = p => ms.find(m => { g[m] = p; const w = winner(g); g[m] = 0; return w; });
+      if (skill === 0 && Math.random() < .7) return rnd();
+      let m = wins(2); if (m != null) return m;
+      m = wins(1); if (m != null) return m;
+      if (skill < 2) return rnd();
+      // do not hand the child a winning move; prefer the middle
+      const safe = ms.filter(x => { g[x] = 2; const bad = moves(g).some(y => { g[y] = 1; const w = winner(g); g[y] = 0; return w; }); g[x] = 0; return !bad; });
+      const pool = safe.length ? safe : ms, mid = (W - 1) / 2;
+      return pool.slice().sort((a, b) => Math.abs(a % W - mid) + Math.abs(Math.floor(a / W) - (H - 1) / 2) * (four ? 0 : 1) - Math.abs(b % W - mid) - Math.abs(Math.floor(b / W) - (H - 1) / 2) * (four ? 0 : 1))[0];
+    }
+    function draw(win) {
+      [...board.children].forEach((c, i) => { c.textContent = g[i] ? mark(g[i]) : ''; c.classList.toggle('win', !!win && win.includes(i)); });
+      if (!over) S.sub.textContent = turn === 1 ? mark(1) + ' Your turn' : two ? mark(2) + ' Player two' : '🧸 Teddy is thinking…';
+    }
+    function play(i) {
+      g[i] = turn; A.playPop(); K.tone(turn === 1 ? 660 : 440, .12, .2);
+      const w = winner(g);
+      if (w || !moves(g).length) {
+        over = true; draw(w);
+        if (!w) { S.sub.textContent = 'A draw!'; K.say('A draw! Nobody made a line. Play again.'); timer = setTimeout(reset, 3200); }
+        else if (turn === 1 || two) { S.sub.textContent = mark(turn) + ' wins!'; if (!two) skill = Math.min(2, skill + 1); timer = K.won((two ? (turn === 1 ? 'Player one' : 'Player two') : 'You') + ' made a line of ' + need + '!', reset); }
+        else { skill = Math.max(0, skill - 1); S.sub.textContent = '🧸 Teddy made a line'; K.say('Teddy made a line. Watch out and block next time!'); A.playChime('uhoh'); timer = setTimeout(reset, 3600); }
+        return;
+      }
+      turn = 3 - turn; draw();
+      if (turn === 2 && !two) timer = setTimeout(() => play(pickMove()), 800);
+    }
+    function reset(talk) {
+      clearTimeout(timer);
+      W = four ? 7 : 3; H = four ? 6 : 3; need = four ? 4 : 3; g = Array(W * H).fill(0); turn = 1; over = false; lines = [];
+      for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) [[0, 1], [1, 0], [1, 1], [1, -1]].forEach(([dr, dc]) => {
+        const l = []; for (let k = 0; k < need; k++) { const rr = r + dr * k, cc = c + dc * k; if (rr < 0 || rr >= H || cc < 0 || cc >= W) return; l.push(rr * W + cc); } lines.push(l); });
+      board.innerHTML = ''; board.classList.toggle('four', four);
+      g.forEach((_, i) => { const c = K.el('button', 'gc'); c.onclick = () => {
+        if (over || (turn === 2 && !two)) return; K.wake();
+        const m = four ? moves(g).find(x => x % W === i % W) : (g[i] ? null : i);
+        if (m == null) return K.wrong(c);
+        play(m); }; board.appendChild(c); });
+      size(); draw();
+      S.intro = four ? 'Drop your pieces. Get four in a row to win!' : 'Take turns. Get three in a row to win!';
+      if (talk === true) K.say(S.intro);
+    }
+    addEventListener('resize', size);
+    reset(true);
+  </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>ABC Order</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#7f00ff,#e100ff); --av-ink: #fff; }
+  .strip { display:flex; justify-content:center; gap:0; max-width:100%; }
+  .strip span { width:clamp(10px,3.3vw,26px); text-align:center; font-weight:900; font-size:clamp(11px,3vw,20px); border-radius:5px; opacity:.6; }
+  .strip span.on { background:#ffe066; color:#333; opacity:1; }
+  .pond { display:flex; flex-wrap:wrap; gap:clamp(8px,2.4vmin,18px); justify-content:center; align-content:center; max-width:760px; }
+  .bub { border:none; border-radius:50%; background:#fff; color:#4a148c; font-family:inherit; font-weight:900; cursor:pointer; position:relative;
+    width:clamp(52px,17vmin,120px); height:clamp(52px,17vmin,120px); font-size:clamp(26px,8vmin,58px); box-shadow:0 6px 0 rgba(0,0,0,.22), inset -6px -8px 0 rgba(0,0,0,.06); }
+  .pond.words .bub { width:auto; height:auto; border-radius:999px; padding:.3em .8em; font-size:clamp(22px,6vmin,38px); }
+  .bub.done { background:#b6f09c; box-shadow:none; } .bub.wrong { animation:av-shake .35s; }
+  .bub.done::after { content:attr(data-k); position:absolute; top:-6px; right:-6px; width:1.6em; height:1.6em; border-radius:50%; background:#14532d; color:#fff; font-size:14px; display:flex; align-items:center; justify-content:center; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: alphabetical order. Tap the bubbles in ABC order: first a run of
+    // neighbouring letters, then letters with gaps between them, then whole
+    // words (by first letter, later by second). The alphabet strip on top is
+    // there to look at — using it is the skill.
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const ABC = [...'abcdefghijklmnopqrstuvwxyz'];
+    const WORDS = ['apple', 'ball', 'cat', 'dog', 'egg', 'fish', 'goat', 'hat', 'ice', 'jam', 'kite', 'lion', 'moon', 'nest', 'owl', 'pig', 'queen', 'rain', 'sun', 'tree', 'van', 'web', 'yak', 'zip'];
+    const SAME = [['bat', 'bed', 'big', 'box', 'bus'], ['cap', 'cot', 'cup', 'cry'], ['sad', 'set', 'sit', 'sock', 'sun'], ['pan', 'pen', 'pig', 'pot', 'pup'], ['map', 'men', 'mix', 'mop', 'mug']];
+    const INTRO = 'Tap them in ABC order.';
+    const S = K.shell(INTRO, [['🔄 Again', () => L.go(L.n)], ['💡 Hint', hint]]);
+    const strip = K.el('div', 'strip'), pond = K.el('div', 'pond'); S.fit.append(strip, pond); S.fit.style.flexDirection = 'column'; S.fit.style.gap = '10px';
+    ABC.forEach(c => strip.appendChild(K.el('span', '', c)));
+    let items, at, misses, locked, timer, first = true;
+    function mark() { [...strip.children].forEach(s => s.className = items.slice(0, at).some(w => w[0] === s.textContent) ? 'on' : ''); }
+    function hint() { if (!locked) [...pond.children].find(b => b.textContent === items[at]).classList.add('av-glow'); }
+    function tap(w, b) {
+      if (locked || b.classList.contains('done')) return; K.wake();
+      if (w !== items[at]) { K.wrong(b); K.say(at ? 'Not yet. What comes after ' + items[at - 1] + '?' : 'Which one comes first in the alphabet?'); if (++misses >= 2) hint(); return; }
+      b.classList.remove('av-glow'); b.classList.add('done'); b.dataset.k = ++at; misses = 0; A.playPop(); K.tone(380 + at * 60, .15, .2); K.say(w); mark();
+      if (at === items.length) { locked = true; timer = K.won('Perfect ABC order! ' + items.join(', ') + '.', () => L.win()); }
+    }
+    const L = K.levels('abc-order', S.ui, n => {
+      clearTimeout(timer); locked = false; at = 0; misses = 0;
+      if (n < 3) { const k = 4 + n, s = Math.floor(Math.random() * (26 - k)); items = ABC.slice(s, s + k); }
+      else if (n < 6) items = U.shuffle(ABC).slice(0, 2 + n).sort();
+      else if (n < 9) items = U.shuffle(WORDS).slice(0, n - 3).sort();
+      else items = U.shuffle(U.rand(SAME)).slice(0, 4).sort();
+      pond.innerHTML = ''; pond.classList.toggle('words', n >= 6);
+      U.shuffle(items).forEach(w => { const b = K.el('button', 'bub', w); b.onclick = () => tap(w, b); pond.appendChild(b); });
+      mark();
+      S.intro = n < 6 ? 'Tap the letters in ABC order.' : n < 9 ? 'Tap the words in ABC order. Look at the first letter.' : 'These all start the same. Look at the second letter.';
+      S.sub.textContent = S.intro; K.say(first || n === 6 || n === 9 ? S.intro : 'Level ' + (n + 1)); first = false;
+    });
+    L.begin();
+  </script>
+</body>
+</html>

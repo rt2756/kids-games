@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Quick Dots</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#ff9a9e,#fad0c4); --av-ink: #7a1f3d; }
+  .die, .frame { display:grid; gap:6%; background:#fff; border-radius:16%; padding:9%; box-shadow:0 8px 0 rgba(0,0,0,.16); }
+  .die { grid-template-columns:repeat(3,1fr); width:clamp(150px,38vmin,270px); aspect-ratio:1; }
+  .frame { grid-template-columns:repeat(5,1fr); gap:0; padding:4%; border-radius:14px; width:clamp(240px,62vmin,460px); aspect-ratio:5/2.1; }
+  .die i { border-radius:50%; } .die i.d { background:#333; }
+  .frame i { border:2px solid #999; display:flex; } .frame i.d::after { content:''; margin:14%; flex:1; border-radius:50%; background:#e11d48; }
+  .gone i.d, .gone i.d::after { background:transparent; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: subitizing — seeing "how many" at a glance, without counting one
+    // by one. Dice patterns first (1–3, then to 6), then ten frames up to 10.
+    // Later the dots hide after a moment; tap the card to peek again.
+    const K = KidsKit, U = KidsUtil;
+    const DICE = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+    let prev = 0, hideTimer;
+    function card(n, frame) {
+      let h = '<div class="' + (frame ? 'frame' : 'die') + '">';
+      for (let k = 0; k < (frame ? 10 : 9); k++) h += '<i' + ((frame ? k < n : DICE[n].includes(k)) ? ' class="d"' : '') + '></i>';
+      return h + '</div>';
+    }
+    function flash() {
+      clearTimeout(hideTimer);
+      const c = document.querySelector('.die, .frame'); if (!c) return;
+      c.classList.remove('gone'); hideTimer = setTimeout(() => c.classList.add('gone'), 1500);
+    }
+    const ui = K.quiz({ title: 'How many dots?', next(round) {
+      const frame = round >= 20 && round % 2 === 0, max = round < 6 ? 3 : round < 12 ? 5 : 6;
+      let n; do { n = frame ? 4 + Math.floor(Math.random() * 7) : 1 + Math.floor(Math.random() * max); } while (n === prev);
+      prev = n; clearTimeout(hideTimer);
+      const opts = new Set([n]);
+      while (opts.size < 3) { const o = n + Math.floor(Math.random() * 5) - 2; if (o >= 1 && o <= (frame ? 10 : 6)) opts.add(o); }
+      if (round >= 12) setTimeout(flash, 50);
+      return { show: card(n, frame) + (round >= 12 ? '<div class="av-sub">👀 tap to peek again</div>' : ''),
+        say: round >= 12 ? 'Quick! How many dots?' : 'How many dots?',
+        choices: U.shuffle([...opts]).map(o => ({ html: '<span class="e">' + o + '</span>', ok: o === n, say: 'That is ' + words[o] + '. Look again.' })),
+        praise: 'Yes! ' + words[n] + '!' };
+    } });
+    document.querySelector('.av-prompt').addEventListener('click', () => { if (document.querySelector('.av-sub')) flash(); });
+  </script>
+</body>
+</html>

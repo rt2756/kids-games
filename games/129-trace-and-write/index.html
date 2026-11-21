@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Trace & Write</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#fdfcfb,#e2d1c3); --av-ink: #5a3a10; }
+  .pad { background:#fffdf8; border-radius:24px; box-shadow:0 8px 22px rgba(0,0,0,.18), inset 0 0 0 4px #f1e4d2; cursor:crosshair; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: pre-writing — forming numbers and letters with a finger. The
+    // shape is shown pale; paint only shows inside it, and it is done when
+    // nearly all of the shape has been covered. There is no wrong way.
+    const K = KidsKit, A = KidsAudio;
+    const HI = ['a', 'aa', 'i', 'ee', 'u', 'oo', 'e', 'ai', 'o', 'au'];
+    const SETS = [
+      { label: '🔢 123', items: [...'1234567890'], name: c => 'the number ' + c },
+      { label: '🔤 ABC', items: [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'], name: c => 'the letter ' + c },
+      { label: '🔡 abc', items: [...'abcdefghijklmnopqrstuvwxyz'], name: c => 'small ' + c },
+      { label: 'अ आ', items: ['अ', 'आ', 'इ', 'ई', 'उ', 'ऊ', 'ए', 'ऐ', 'ओ', 'औ'], hindi: true }
+    ];
+    const INKS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+    const S = K.shell('Trace it with your finger.', []);
+    const modes = K.el('div', 'av-modes'); S.ui.stage.insertBefore(modes, S.sub);
+    const cv = K.el('canvas', 'pad'); S.fit.appendChild(cv);
+    const ctx = cv.getContext('2d');
+    const G = 30;                                     // coverage grid
+    let set = SETS[0], i = 0, px, need, got, mask, done, timer, last = null, r, ink;
+
+    SETS.forEach((s, k) => {
+      const b = K.el('button', 'av-btn' + (k ? '' : ' on'), s.label);
+      b.onclick = () => { K.wake(); set = s; i = 0; modes.querySelectorAll('.av-btn').forEach(x => x.classList.toggle('on', x === b)); show(); };
+      modes.appendChild(b);
+    });
+    S.button('◀', () => { i = (i + set.items.length - 1) % set.items.length; show(); });
+    S.button('🧽 Clear', () => show(true));
+    S.button('▶', () => { i = (i + 1) % set.items.length; show(); });
+
+    function glyph(c, size, colour) {
+      const ch = set.items[i];
+      c.font = '900 ' + size * .78 + 'px system-ui, "Nirmala UI", "Kohinoor Devanagari", sans-serif';
+      c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+      const m = c.measureText(ch), y = size / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
+      c.fillStyle = c.strokeStyle = colour; c.lineWidth = size * .035; c.lineJoin = 'round';
+      c.fillText(ch, size / 2, y); c.strokeText(ch, size / 2, y);
+    }
+    function line() { return set.hindi ? { text: set.items[i], hindi: true, roman: HI[i] } : set.name(set.items[i]); }
+    function show(quiet) {
+      clearTimeout(timer);
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      px = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight, 620));
+      cv.style.width = cv.style.height = px + 'px'; cv.width = cv.height = px * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, px, px);
+      ctx.globalCompositeOperation = 'source-over'; glyph(ctx, px, '#d9cdbf');
+      const m = document.createElement('canvas'); m.width = m.height = G;
+      const mc = m.getContext('2d'); glyph(mc, G, '#000');
+      const d = mc.getImageData(0, 0, G, G).data;
+      mask = []; need = 0; got = 0; done = false; last = null; r = px * .075; ink = INKS[i % INKS.length];
+      for (let k = 0; k < G * G; k++) { mask[k] = d[k * 4 + 3] > 110 ? 1 : 0; need += mask[k]; }
+      S.intro = set.hindi ? 'Trace it with your finger.' : 'Trace ' + set.name(set.items[i]) + ' with your finger.';
+      S.sub.textContent = S.intro;
+      if (quiet !== true) K.say(set.hindi ? line() : S.intro);
+    }
+    function mark(x, y) {
+      const cell = px / G, c0 = Math.floor((x - r) / cell), c1 = Math.floor((x + r) / cell), r0 = Math.floor((y - r) / cell), r1 = Math.floor((y + r) / cell);
+      for (let a = Math.max(0, r0); a <= Math.min(G - 1, r1); a++) for (let b = Math.max(0, c0); b <= Math.min(G - 1, c1); b++)
+        if (mask[a * G + b] === 1) { mask[a * G + b] = 2; got++; }
+    }
+    function paint(e) {
+      if (done) return;
+      const b = cv.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+      ctx.globalCompositeOperation = 'source-atop';   // colour only lands on the shape
+      ctx.strokeStyle = ink; ctx.lineWidth = r * 2; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(last ? last[0] : x, last ? last[1] : y); ctx.lineTo(x + .01, y); ctx.stroke();
+      const steps = last ? Math.ceil(Math.hypot(x - last[0], y - last[1]) / (r / 2)) : 1;
+      for (let s = 0; s <= steps; s++) mark(last ? last[0] + (x - last[0]) * s / steps : x, last ? last[1] + (y - last[1]) * s / steps : y);
+      last = [x, y];
+      if (got >= need * .92) finish();
+    }
+    function finish() {
+      done = true;
+      ctx.globalCompositeOperation = 'source-over'; glyph(ctx, px, ink);
+      const l = line();
+      K.star(); A.playChime('yay'); K.confetti(); K.say(set.hindi ? l : 'You wrote ' + l + '!');
+      timer = setTimeout(() => { i = (i + 1) % set.items.length; show(); }, 2600);
+    }
+    cv.style.touchAction = 'none';
+    cv.addEventListener('pointerdown', e => { K.wake(); last = null; try { cv.setPointerCapture(e.pointerId); } catch (x) {} paint(e); cv.onpointermove = paint; });
+    const stop = () => { cv.onpointermove = null; last = null; };
+    cv.addEventListener('pointerup', stop); cv.addEventListener('pointercancel', stop);
+    addEventListener('resize', () => show(true));
+    show();
+  </script>
+</body>
+</html>

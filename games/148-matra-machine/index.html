@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Matra Machine</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#f7971e,#ffd200); --av-ink: #5a2a00; }
+  .machine { display:flex; align-items:center; gap:clamp(6px,2vmin,16px); font-weight:900; font-size:clamp(40px,12vmin,84px); }
+  .machine span { background:#fff; color:#333; border-radius:18px; min-width:1.5em; padding:.05em .25em; box-shadow:0 6px 0 rgba(0,0,0,.18); }
+  .machine .matra { color:#c2410c; } .machine .q { background:#5a2a00; color:#ffd200; }
+  .machine i { font-style:normal; font-size:.6em; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: barahkhadi — a consonant and a matra join to make one sound
+    // (क + ा = का). Two kinds of round: build it, and pick it out by ear.
+    const K = KidsKit, U = KidsUtil;
+    const C = [['क', 'k'], ['ग', 'g'], ['म', 'm'], ['न', 'n'], ['र', 'r'], ['स', 's'], ['ल', 'l'], ['प', 'p'], ['त', 't'], ['ब', 'b']];
+    const M = [['ा', 'aa', 'आ'], ['ि', 'i', 'इ'], ['ी', 'ee', 'ई'], ['ु', 'u', 'उ'], ['ू', 'oo', 'ऊ'], ['े', 'e', 'ए'], ['ै', 'ai', 'ऐ'], ['ो', 'o', 'ओ'], ['ौ', 'au', 'औ']];
+    const hi = (text, roman) => ({ text, roman, hindi: true });
+    K.quiz({ title: 'मात्रा मशीन · Matra machine', next(round) {
+      const c = U.rand(C), pool = M.slice(0, round < 5 ? 3 : round < 12 ? 6 : 9), ms = U.shuffle(pool).slice(0, 3), m = ms[0], listen = round % 2 === 1;
+      const choices = U.shuffle(ms).map(x => ({ html: '<span class="e">' + c[0] + x[0] + '</span><span class="w">' + c[1] + x[1] + '</span>', ok: x === m, say: hi(c[0] + x[0], c[1] + x[1]) }));
+      return listen
+        ? { show: '<div class="av-big">👂</div><div class="av-sub">🔊 tap to hear again</div>', say: hi(c[0] + m[0], c[1] + m[1]), choices, praise: hi('शाबाश! ' + c[0] + m[0] + '!', 'Shabaash! ' + c[1] + m[1] + '!') }
+        : { show: '<div class="machine"><span>' + c[0] + '</span><i>+</i><span class="matra">◌' + m[0] + '</span><i>=</i><span class="q">?</span></div>',
+            say: hi(c[0] + ' में ' + m[2] + ' की मात्रा', c[1] + 'a plus ' + m[1]), choices, praise: hi('शाबाश! ' + c[0] + m[0] + '!', 'Shabaash! ' + c[1] + m[1] + '!') };
+    } });
+  </script>
+</body>
+</html>

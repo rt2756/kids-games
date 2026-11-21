@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Hundred Chart</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#4568dc,#b06ab3); --av-ink: #fff; }
+  .chart { display:grid; grid-template-columns:repeat(10,1fr); gap:2px; }
+  .hc { border:none; border-radius:16%; background:#fff; color:#333; font-family:inherit; font-weight:900; font-size:inherit; padding:0; cursor:pointer; min-width:0; min-height:0; }
+  .hc.blank { background:rgba(255,255,255,.3); box-shadow:inset 0 0 0 2px #fff; }
+  .hc.lit { background:#ffe066; }
+  .hc.wrong { animation:av-shake .35s; }
+  .tile { background:#ffe066; color:#333; font-weight:900; font-size:clamp(24px,7vmin,44px); border-radius:16px; padding:4px 22px; box-shadow:0 6px 0 rgba(0,0,0,.22); }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: number order to 100 and the patterns inside it. First fill the
+    // missing numbers (to 20, 50, 100); then count in tens, fives and twos and
+    // watch the pattern light up.
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const LEVELS = [{ max: 20, k: 3 }, { max: 20, k: 6 }, { max: 50, k: 5 }, { max: 50, k: 9 }, { max: 100, k: 6 }, { max: 100, k: 12 }, { skip: 10 }, { skip: 5 }, { skip: 2 }];
+    const S = K.shell('', [['🔄 Again', () => L.go(L.n)], ['💡 Hint', hint]]);
+    const board = K.el('div', 'chart'), tile = K.el('div', 'tile'); S.fit.appendChild(board); S.ui.stage.insertBefore(tile, S.fit);
+    let lv, max, todo, want, misses, locked, timer, cells;
+    function size() {
+      const rows = max / 10, s = Math.floor(Math.min(S.fit.clientWidth / 10, S.fit.clientHeight / rows, 76));
+      board.style.width = s * 10 + 'px'; board.style.height = s * rows + 'px'; board.style.gridTemplateRows = 'repeat(' + rows + ',1fr)'; board.style.fontSize = Math.max(10, Math.floor(s * .42)) + 'px';
+    }
+    function ask() {
+      misses = 0;
+      if (!todo.length) { locked = true; tile.textContent = '🎉'; timer = K.won(lv.skip ? 'Look at the pattern! You counted in ' + lv.skip + 's.' : 'The chart is complete!', () => L.win()); return; }
+      want = todo[0]; tile.textContent = lv.skip ? '➡️ ' + want : want;
+      S.intro = lv.skip ? 'Count in ' + lv.skip + 's. Tap ' + want + '.' : 'Where does ' + want + ' go?'; S.sub.textContent = S.intro; K.say(S.intro);
+    }
+    function tap(n, node) {
+      if (locked) return; K.wake();
+      if (n !== want) { if (!lv.skip && !node.classList.contains('blank')) return; K.wrong(node); if (++misses >= 2) hint(); return K.say(lv.skip ? 'Not that one. Count on ' + lv.skip + ' more.' : 'Look at the numbers on each side.'); }
+      node.classList.remove('blank', 'av-glow'); node.classList.add('lit'); node.textContent = n; A.playPop(); K.tone(400 + n * 6, .15, .2);
+      todo.shift(); ask();
+    }
+    function hint() { if (!locked) cells[want].classList.add('av-glow'); }
+    const L = K.levels('hundred-chart', S.ui, n => {
+      clearTimeout(timer); lv = LEVELS[Math.min(n, LEVELS.length - 1)]; locked = false;
+      max = lv.skip ? (lv.skip === 2 ? 50 : 100) : lv.max;
+      const all = [...Array(max).keys()].map(i => i + 1);
+      todo = lv.skip ? all.filter(i => i % lv.skip === 0) : U.shuffle(all).slice(0, lv.k);
+      const blank = new Set(lv.skip ? [] : todo);
+      board.innerHTML = ''; cells = {};
+      all.forEach(i => { const c = cells[i] = K.el('button', 'hc' + (blank.has(i) ? ' blank' : ''), blank.has(i) ? '' : i); c.onclick = () => tap(i, c); board.appendChild(c); });
+      size(); ask();
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

@@ -17,6 +17,11 @@ html[data-theme="dark"] {
   --border-color: #404040;
 }
 
+/* Dark theme inside games. Every game gets a night-sky background unless it
+   styles dark mode itself (its own rule comes later and wins) or drives the
+   background from a class on <body> (day/night, lights on/off). */
+html[data-theme="dark"] body:where(:not([class])) { background: linear-gradient(180deg, #1c2233 0%, #2b2440 100%); }
+
 * { box-sizing: border-box; }
 html, body {
   margin: 0;

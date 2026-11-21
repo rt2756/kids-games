@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Guess the Jar</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#654ea3,#eaafc8); --av-ink: #fff; }
+  .jar { position:relative; border:5px solid rgba(255,255,255,.95); border-top-width:12px; border-radius:14% 14% 20% 20% / 8% 8% 14% 14%; background:rgba(255,255,255,.18); overflow:hidden; }
+  .jar i { position:absolute; aspect-ratio:1; border-radius:50%; box-shadow:inset -3px -4px 0 rgba(0,0,0,.22), inset 3px 3px 0 rgba(255,255,255,.35); }
+  .jar i.counted { outline:2px solid #fff; }
+  .jar.hidden i { visibility:hidden; } .jar.hidden::after { content:'🙈'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:90px; }
+  .guess { display:flex; align-items:center; gap:14px; width:min(100%,520px); }
+  .guess input { flex:1; height:36px; accent-color:#ffe066; } .guess b { font-size:clamp(26px,7vmin,44px); min-width:2.2em; text-align:center; background:#fff; color:#333; border-radius:12px; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: estimation — a sensible guess without counting. The jar shows
+    // for a moment, the child slides to a guess, then the marbles are counted
+    // out in tens. Close counts as right; exact is not the point.
+    const K = KidsKit, A = KidsAudio;
+    const INKS = ['#ef4444', '#3b82f6', '#22c55e', '#facc15', '#a855f7', '#fb923c'];
+    const S = K.shell('', []);
+    const jar = K.el('div', 'jar'), panel = K.el('div', 'guess', '<input type="range" min="0" max="20" value="10"><b>10</b>');
+    S.fit.appendChild(jar); S.ui.stage.insertBefore(panel, S.bar);
+    const slider = panel.firstChild, read = panel.lastChild;
+    S.ui.setTitle('Guess the jar');
+    let n, cap, round = 0, phase, timer;
+    slider.oninput = () => { read.textContent = slider.value; };
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight * .82, 420)); jar.style.width = s + 'px'; jar.style.height = s * 1.2 + 'px'; }
+    function fill(show) {
+      jar.innerHTML = ''; jar.classList.toggle('hidden', !show);
+      const cols = Math.ceil(Math.sqrt(cap * .9)), d = 92 / cols;
+      [...Array(n)].forEach((_, i) => { const m = K.el('i'); m.style.cssText = 'width:' + d + '%;left:' + (4 + (i % cols) * d + (Math.random() - .5) * d * .25) + '%;bottom:' + (3 + Math.floor(i / cols) * d * .8) + '%;background:' + INKS[Math.floor(Math.random() * 6)]; jar.appendChild(m); });
+    }
+    function next() {
+      clearTimeout(timer);
+      cap = round < 3 ? 20 : round < 6 ? 30 : round < 10 ? 50 : 100; round++;
+      n = Math.max(4, Math.floor(cap * (.2 + Math.random() * .8))); phase = 'look';
+      slider.max = cap; slider.value = Math.round(cap / 2); read.textContent = slider.value; slider.disabled = true;
+      size(); fill(true);
+      S.intro = 'Look quickly! About how many marbles? Do not count.'; S.sub.textContent = S.intro; K.say(S.intro);
+      timer = setTimeout(() => { jar.classList.add('hidden'); slider.disabled = false; phase = 'guess'; S.sub.textContent = 'Slide to your guess, then press Guess.'; K.say('Now slide to your guess.'); }, 3200 + n * 30);
+    }
+    function guess() {
+      if (phase !== 'guess') return; phase = 'show'; slider.disabled = true; jar.classList.remove('hidden');
+      const g = +slider.value, off = Math.abs(g - n), close = off <= Math.max(2, n * .2);
+      let c = 0; S.sub.textContent = 'Counting…';
+      const tick = () => {
+        c = Math.min(n, c + 10); [...jar.children].slice(0, c).forEach(m => m.classList.add('counted')); S.sub.textContent = c + (c < n ? '…' : ' marbles. You guessed ' + g + '.'); K.tone(500 + c * 4, .1, .2);
+        if (c < n) return timer = setTimeout(tick, 420);
+        const l = off === 0 ? 'Exactly ' + n + '! Amazing!' : close ? 'There were ' + n + '. You guessed ' + g + '. Very close!' : 'There were ' + n + '. You guessed ' + g + '. ' + (g > n ? 'A bit too many.' : 'A bit too few.') + ' Try the next one!';
+        if (close) timer = K.won(l, next); else { K.say(l); timer = setTimeout(next, K.speakMs(l) + 900); }
+      };
+      tick();
+    }
+    S.button('🎯 Guess', guess); S.button('👀 Peek again', () => { if (phase !== 'guess') return; jar.classList.remove('hidden'); setTimeout(() => { if (phase === 'guess') jar.classList.add('hidden'); }, 1500); });
+    addEventListener('resize', size);
+    next();
+  </script>
+</body>
+</html>

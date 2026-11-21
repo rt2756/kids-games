@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Measure with Blocks</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#ffb75e,#ed8f03); --av-ink: #4a2a00; }
+  .ruler { width:10em; display:flex; flex-direction:column; gap:.25em; align-items:flex-start; }
+  .thing { height:1em; border-radius:.5em; position:relative; box-shadow:inset 0 -.14em 0 rgba(0,0,0,.2); transition:width .3s; }
+  .thing span { position:absolute; right:-.1em; top:-.22em; font-size:1.05em; line-height:1; transform:scaleX(-1); }
+  .blocks { display:flex; height:1em; }
+  .blocks i { width:1em; height:1em; box-sizing:border-box; background:#fff; border:.06em solid #4a2a00; border-radius:.14em; font-style:normal; font-weight:900; display:flex; align-items:center; justify-content:center; }
+  .blocks i::first-line { font-size:.45em; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: measuring length with equal units, end to end, no gaps. Line up
+    // blocks under the object until they are exactly as long, then say how many.
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const THINGS = [['✏️', 'pencil', '#facc15'], ['🐍', 'snake', '#22c55e'], ['🚂', 'train', '#ef4444'], ['🐛', 'caterpillar', '#84cc16'], ['🥖', 'bread', '#d97706'], ['🪈', 'flute', '#a16207'], ['🦎', 'lizard', '#14b8a6']];
+    const NUM = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+    const S = K.shell('', []);
+    const box = K.el('div', 'ruler', '<div class="thing"></div><div class="blocks"></div>'); S.fit.appendChild(box);
+    const thing = box.firstChild, blocks = box.lastChild;
+    S.ui.setTitle('Measure with blocks');
+    let n, got, cur, round = 0, locked, timer;
+    function size() { const u = Math.floor(Math.min(S.fit.clientWidth / 10.4, S.fit.clientHeight / 3.4, 84)); box.style.fontSize = u + 'px'; }
+    function draw() {
+      thing.style.width = n + 'em'; thing.style.background = cur[2]; thing.innerHTML = '<span>' + cur[0] + '</span>';
+      blocks.innerHTML = [...Array(got)].map((_, i) => '<i class="' + (i === got - 1 ? 'av-pop' : '') + '">' + (i + 1) + '</i>').join('');
+    }
+    function check() {
+      if (locked) return;
+      if (got === n) { locked = true; timer = K.won('Yes! The ' + cur[1] + ' is ' + NUM[n] + (n === 1 ? ' block' : ' blocks') + ' long.', next); }
+      else { A.playChime('uhoh'); K.say(got < n ? 'Too short. The blocks must reach the end of the ' + cur[1] + '.' : 'Too long. Take a block away.'); }
+    }
+    function next() {
+      clearTimeout(timer); locked = false; got = 0; cur = U.rand(THINGS);
+      let m; do { m = 2 + Math.floor(Math.random() * (round < 4 ? 4 : 8)); } while (m === n); n = m; round++;
+      size(); draw();
+      S.intro = 'How long is the ' + cur[1] + '? Line up blocks under it.'; S.sub.textContent = S.intro; K.say(S.intro);
+    }
+    S.button('➕ Block', () => { if (locked || got >= 10) return; got++; A.playPop(); K.say(NUM[got]); draw(); });
+    S.button('➖', () => { if (locked || !got) return; got--; A.playPop(); draw(); });
+    S.button('✅ Done', check);
+    addEventListener('resize', size);
+    next();
+  </script>
+</body>
+</html>

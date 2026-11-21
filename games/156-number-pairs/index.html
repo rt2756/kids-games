@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Number Pairs</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#f857a6,#ff5858); --av-ink: #fff; }
+  .deck { display:grid; gap:8px; justify-content:center; align-content:center; }
+  .card { border:none; border-radius:14%; background:#fff; color:#333; font-family:inherit; font-size:inherit; cursor:pointer; padding:6%; box-shadow:0 5px 0 rgba(0,0,0,.22);
+    display:flex; flex-direction:column; gap:4%; align-items:center; justify-content:center; min-width:0; min-height:0; overflow:hidden; }
+  .card.pick { outline:5px solid #ffd93b; transform:scale(1.04); } .card.done { background:#b6f09c; box-shadow:none; opacity:.75; } .card.wrong { animation:av-shake .35s; }
+  .num { font-size:5em; line-height:1; } .word { font-size:1.9em; }
+  .die { display:grid; grid-template-columns:repeat(3,1fr); gap:8%; width:72%; aspect-ratio:1; } .die i { border-radius:50%; } .die i.d { background:#333; }
+  .rows { display:grid; grid-template-columns:repeat(5,1fr); gap:6%; width:86%; } .rows i { aspect-ratio:1; border-radius:50%; background:#e11d48; }
+  .tf { display:grid; grid-template-columns:repeat(5,1fr); width:92%; border:1px solid #555; } .tf i { aspect-ratio:1; border:1px solid #555; } .tf i.d { background:radial-gradient(circle, #2563eb 0 55%, transparent 58%); }
+  .fruit { font-size:1.55em; line-height:1.1; letter-spacing:-.08em; word-break:break-all; text-align:center; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: one number, many forms — numeral, word, dots, ten frame, a
+    // handful of apples. All the cards are face up; tap two that show the same
+    // number. Nothing to remember, so the thinking is all about "how many".
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+    const DICE = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+    const FORMS = {
+      num: n => '<b class="num">' + n + '</b>',
+      word: n => '<b class="word">' + WORDS[n] + '</b>',
+      dots: n => n <= 6 ? '<span class="die">' + [...Array(9).keys()].map(k => '<i' + (DICE[n].includes(k) ? ' class="d"' : '') + '></i>').join('') + '</span>' : '<span class="rows">' + '<i class="d"></i>'.repeat(n) + '</span>',
+      frame: n => [...Array(Math.ceil(n / 10))].map((_, f) => '<span class="tf">' + [...Array(10).keys()].map(k => '<i' + (f * 10 + k < n ? ' class="d"' : '') + '></i>').join('') + '</span>').join(''),
+      fruit: n => '<span class="fruit">' + '🍎'.repeat(n) + '</span>'
+    };
+    const LEVELS = [[3, 1, 5], [4, 1, 5], [4, 3, 10], [6, 1, 10], [6, 5, 10], [6, 8, 20], [8, 5, 20]];   // pairs, smallest, biggest
+    const INTRO = 'Find two cards that show the same number.';
+    const S = K.shell(INTRO, [['🔄 Again', () => L.go(L.n)], ['💡 Hint', hint]]);
+    const board = K.el('div', 'deck'); S.fit.appendChild(board);
+    let cards, pick, left, misses, timer, first = true;
+    function size() {
+      const n = cards.length, W = S.fit.clientWidth, H = S.fit.clientHeight; let best = 0, cols = 1;
+      for (let c = 1; c <= n; c++) { const s = Math.min(W / c, H / Math.ceil(n / c)); if (s > best) { best = s; cols = c; } }
+      const s = Math.floor(Math.min(best, 190));
+      board.style.gridTemplateColumns = 'repeat(' + cols + ',' + (s - 8) + 'px)'; board.style.gridAutoRows = (s - 8) + 'px'; board.style.fontSize = Math.floor(s * .1) + 'px';
+    }
+    function tap(c) {
+      if (c.done) return; K.wake(); c.node.classList.remove('av-glow');
+      if (!pick) { pick = c; c.node.classList.add('pick'); A.playPop(); return K.say(WORDS[c.n]); }
+      if (pick === c) { pick = null; return c.node.classList.remove('pick'); }
+      const a = pick; pick = null; a.node.classList.remove('pick');
+      if (a.n !== c.n) { K.wrong(c.node); K.say('That is ' + WORDS[c.n] + '. Find another ' + WORDS[a.n] + '.'); if (++misses >= 2) hint(); return; }
+      [a, c].forEach(x => { x.done = true; x.node.classList.add('done'); }); misses = 0; A.playChime('yay');
+      if (--left === 0) timer = K.won('You matched them all!', () => L.win()); else K.say(WORDS[c.n] + ' and ' + WORDS[c.n] + '!');
+    }
+    function hint() { const c = cards.find(x => !x.done); if (c) cards.filter(x => x.n === c.n).forEach(x => x.node.classList.add('av-glow')); }
+    const L = K.levels('number-pairs', S.ui, n => {
+      clearTimeout(timer);
+      const [pairs, lo, hi] = LEVELS[Math.min(n, LEVELS.length - 1)];
+      const nums = U.shuffle([...Array(hi - lo + 1).keys()].map(i => i + lo)).slice(0, pairs);
+      cards = U.shuffle(nums.flatMap(v => U.shuffle(Object.keys(FORMS).filter(f => v <= 10 || f !== 'fruit')).slice(0, 2).map(f => ({ n: v, f }))));
+      pick = null; left = pairs; misses = 0; board.innerHTML = '';
+      cards.forEach(c => { c.node = K.el('button', 'card', FORMS[c.f](c.n)); c.node.onclick = () => tap(c); board.appendChild(c.node); });
+      size(); K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

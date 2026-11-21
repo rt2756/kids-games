@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Loud or Soft?</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#8e2de2,#4a00e0); --av-ink: #fff; }
+
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: the opposites in sound — loud/soft, fast/slow, high/low,
+    // long/short. The question is a sound; tap the animal that matches it.
+    const K = KidsKit, U = KidsUtil;
+    const notes = (n, gap, f, len, vol) => { for (let i = 0; i < n; i++) K.tone(f, len, vol, 'triangle', i * gap); };
+    const PAIRS = [
+      { ask: 'Is it loud, or soft?', a: ['🐘', 'Loud', () => notes(3, .45, 330, .35, .7)], b: ['🐭', 'Soft', () => notes(3, .45, 330, .35, .03)] },
+      { ask: 'Is it fast, or slow?', a: ['🐇', 'Fast', () => notes(9, .12, 523, .09, .3)], b: ['🐢', 'Slow', () => notes(3, .8, 523, .5, .3)] },
+      { ask: 'Is it high, or low?', a: ['🐦', 'High', () => notes(3, .4, 1760, .3, .25)], b: ['🐻', 'Low', () => notes(3, .4, 98, .35, .5)] },
+      { ask: 'Is it long, or short?', a: ['🐍', 'Long', () => notes(1, 0, 440, 1.6, .3)], b: ['🐜', 'Short', () => notes(1, 0, 440, .09, .3)] }
+    ];
+    let timer, last;
+    K.quiz({ title: 'Listen!', next(round) {
+      let p; do { p = U.rand(PAIRS.slice(0, round < 4 ? 2 : 4)); } while (round >= 4 && p === last); last = p;
+      const right = Math.random() < .5 ? p.a : p.b;
+      return { show: '<div class="av-big">👂</div><div class="av-sub">🔊 tap to hear again</div>', say: 'Listen. ' + p.ask,
+        play() { clearTimeout(timer); timer = setTimeout(right[2], 1900); },
+        choices: [p.a, p.b].map(c => ({ html: K.card(c[0], c[1]), ok: c === right, say: 'Listen again. ' + p.ask })),
+        praise: 'Yes! That was ' + right[1].toLowerCase() + '!' };
+    } });
+  </script>
+</body>
+</html>

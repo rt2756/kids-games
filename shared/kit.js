@@ -5,6 +5,8 @@
 //   KidsKit.quiz({ title, next })   -> a full "question + choices" game
 //   KidsKit.bag(list)               -> draw() without repeats until empty
 //   KidsKit.levels(id, ui, start)   -> level picker + saved progress for puzzles
+//   KidsKit.shell(intro, buttons)   -> instruction line + board box + button row
+//   KidsKit.drag / .over / .tone / .won -> dragging, hit-testing, synth notes, win routine
 //   KidsKit.star() / .confetti() / .say() / .wrong(el)
 //
 // Rules baked in (see README): every prompt is spoken, tapping the prompt
@@ -110,7 +112,7 @@
     let round = 0, locked = false, misses = 0, cur = null, timer = null;
 
     // Tapping the question (or the title) says it again.
-    prompt.onclick = ui.titleEl.onclick = () => { wake(); if (cur) say(cur.say); };
+    prompt.onclick = ui.titleEl.onclick = () => { wake(); if (cur) { say(cur.say); if (cur.play) cur.play(); } };
 
     function newRound() {
       locked = false; misses = 0; cur = next(round++);
@@ -125,6 +127,7 @@
         choices.appendChild(b);
       });
       say(cur.say);
+      if (cur.play) cur.play();                    // a sound that is the question itself
     }
 
     function pick(c, b) {
@@ -242,5 +245,66 @@
     return { begin: () => go(s.n), win: () => go(s.n + 1), go, get n() { return s.n; } };
   }
 
-  window.KidsKit = { el, wake, say, setup, star, confetti, wrong, bag, quiz, flashQuiz, card, speakMs, levels };
+  // ---- helpers for hands-on games ----
+  // A short synth note. to = slide to that pitch; when = seconds from now.
+  function tone(freq, dur = 0.25, vol = 0.3, type = 'sine', when = 0, to) {
+    try {
+      const c = A.getAudio(), t = c.currentTime + when, o = c.createOscillator(), g = c.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0002), t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.05);
+    } catch (e) {}
+  }
+
+  // Drag with a finger or the mouse. The node follows the pointer and springs
+  // back when let go; o.drop(x, y, node) is told where, o.tap(node) fires when
+  // it was pressed without moving (so every drag game also works by tapping).
+  function drag(node, o) {
+    node.style.touchAction = 'none';
+    node.addEventListener('pointerdown', e => {
+      if (o.can && !o.can(node)) return;
+      wake();
+      try { node.setPointerCapture(e.pointerId); } catch (err) {}
+      const sx = e.clientX, sy = e.clientY; let moved = false;
+      const move = ev => {
+        if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 8) return;
+        moved = true; node.classList.add('av-drag');
+        node.style.transform = 'translate(' + (ev.clientX - sx) + 'px,' + (ev.clientY - sy) + 'px) scale(1.06)';
+      };
+      const up = ev => {
+        node.removeEventListener('pointermove', move); node.removeEventListener('pointerup', up); node.removeEventListener('pointercancel', up);
+        node.classList.remove('av-drag'); node.style.transform = '';
+        if (moved) { if (o.drop) o.drop(ev.clientX, ev.clientY, node); } else if (o.tap) o.tap(node);
+      };
+      node.addEventListener('pointermove', move); node.addEventListener('pointerup', up); node.addEventListener('pointercancel', up);
+    });
+  }
+  // Is the point (x, y) over this element? pad widens the target for small fingers.
+  function over(x, y, node, pad = 0) {
+    const r = node.getBoundingClientRect();
+    return x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
+  }
+
+  // The usual page for a hands-on game: a spoken instruction line, a box that
+  // takes all the spare room (size your board from S.fit), and a row of buttons.
+  function shell(intro, buttons) {
+    const ui = setup();
+    ui.stage.classList.add('av-puzzle');
+    const sub = el('div', 'av-sub av-hint', intro), fit = el('div', 'av-fit'), bar = el('div', 'av-bar');
+    ui.stage.append(sub, fit, bar);
+    const S = { ui, sub, fit, bar, intro, button(label, fn) { const b = el('button', 'av-btn', label); b.onclick = () => { wake(); fn(b); }; bar.appendChild(b); return b; } };
+    sub.onclick = () => { wake(); say(S.intro); };
+    (buttons || []).forEach(b => S.button(b[0], b[1]));
+    return S;
+  }
+  // Star + chime + confetti + praise; calls next() once the line has been said.
+  function won(line, next) {
+    star(); A.playChime('yay'); confetti(); say(line);
+    return setTimeout(next, speakMs(line) + 900);
+  }
+
+  window.KidsKit = { tone, drag, over, shell, won, el, wake, say, setup, star, confetti, wrong, bag, quiz, flashQuiz, card, speakMs, levels };
 })();

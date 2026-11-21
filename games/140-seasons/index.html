@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Four Seasons</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#56ccf2,#2f80ed); --av-ink: #fff; }
+  .av-choice { min-width:clamp(72px,20vmin,140px); min-height:clamp(72px,20vmin,140px); }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: the seasons — what belongs to each, and the order they come in.
+    // Seasons are data: the four-season year is the default, and a monsoon year
+    // (summer, monsoon, winter, spring) is one tap away.
+    const K = KidsKit, U = KidsUtil;
+    const SETS = {
+      four: [
+        { name: 'spring', e: '🌸', things: [['🦋', 'A butterfly'], ['🌷', 'New flowers'], ['🐣', 'A baby chick'], ['🌱', 'A new plant'], ['🪁', 'A kite']] },
+        { name: 'summer', e: '☀️', things: [['🍦', 'An ice cream'], ['🕶️', 'Sunglasses'], ['🩴', 'Sandals'], ['🍉', 'A watermelon'], ['🏖️', 'The beach']] },
+        { name: 'autumn', e: '🍂', things: [['🍁', 'Falling leaves'], ['🎃', 'A pumpkin'], ['🌰', 'A chestnut'], ['🍄', 'A mushroom'], ['🌬️', 'A windy day']] },
+        { name: 'winter', e: '❄️', things: [['🧣', 'A scarf'], ['🧤', 'Gloves'], ['🧥', 'A warm coat'], ['☃️', 'A snowman'], ['☕', 'A hot drink']] }],
+      monsoon: [
+        { name: 'summer', e: '☀️', things: [['🥭', 'A mango'], ['🍦', 'An ice cream'], ['🕶️', 'Sunglasses'], ['🩴', 'Sandals'], ['🍉', 'A watermelon']] },
+        { name: 'monsoon', e: '🌧️', things: [['☔', 'An umbrella'], ['🐸', 'A frog'], ['🌈', 'A rainbow'], ['🦚', 'A dancing peacock'], ['⛈️', 'Thunder and rain']] },
+        { name: 'winter', e: '❄️', things: [['🧣', 'A scarf'], ['🧤', 'Gloves'], ['🧥', 'A warm coat'], ['☕', 'A hot drink'], ['🔥', 'A warm fire']] },
+        { name: 'spring', e: '🌸', things: [['🦋', 'A butterfly'], ['🌷', 'New flowers'], ['🐣', 'A baby chick'], ['🪁', 'A kite'], ['🌱', 'A new plant']] }]
+    };
+    let set = SETS.four, draw;
+    const deal = () => { draw = K.bag(set.flatMap(s => s.things.map(t => ({ s, t })))); };
+    const pick = s => set.map(x => ({ html: K.card(x.e, x.name), ok: x === s, say: 'That is ' + x.name + '. Try again.' }));
+    deal();
+    K.quiz({ title: 'Which season?', modes: [{ id: 'four', label: '🍂 Four seasons' }, { id: 'monsoon', label: '🌧️ Monsoon year' }], onMode: id => { set = SETS[id]; deal(); },
+      next(round) {
+        if (round % 4 === 3) {
+          const i = Math.floor(Math.random() * 4), s = set[i], nx = set[(i + 1) % 4];
+          return { show: '<div class="av-big">' + s.e + ' ➡️ ❓</div>', say: 'What comes after ' + s.name + '?', choices: pick(nx), praise: 'Yes! After ' + s.name + ' comes ' + nx.name + '.' };
+        }
+        const { s, t } = draw(), plural = /s$|^New|^Thunder|^Falling/.test(t[1]);
+        return { show: '<div class="av-big">' + t[0] + '</div>', say: t[1] + '. Which season?', choices: pick(s), praise: 'Yes! ' + t[1] + (plural ? ' are' : ' is') + ' for ' + s.name + '.' };
+      } });
+  </script>
+</body>
+</html>

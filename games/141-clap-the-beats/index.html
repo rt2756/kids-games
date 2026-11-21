@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Clap the Beats</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#fc466b,#3f5efb); --av-ink: #fff; }
+  .beats { display:flex; gap:8px; justify-content:center; min-height:clamp(44px,11vmin,70px); }
+  .beats span { min-width:clamp(44px,12vmin,84px); padding:0 10px; border-radius:14px; border:3px dashed rgba(255,255,255,.7); display:flex; align-items:center; justify-content:center;
+    font-weight:900; font-size:clamp(18px,5vmin,34px); }
+  .beats span.on { background:#ffe066; color:#333; border-style:solid; border-color:#fff; }
+  .drum { border:none; background:#fff; border-radius:50%; width:clamp(110px,30vmin,190px); height:clamp(110px,30vmin,190px); font-size:clamp(60px,17vmin,110px); line-height:1; cursor:pointer; box-shadow:0 8px 0 rgba(0,0,0,.25); }
+  .drum:active { transform:translateY(5px); box-shadow:0 3px 0 rgba(0,0,0,.25); }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: syllables — the beats in a word. Tap the drum once for each beat
+    // (each tap says the next part of the word), then say how many beats.
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const WORDS = [['🐱', 'cat'], ['🐶', 'dog'], ['☀️', 'sun'], ['🐟', 'fish'], ['🍎', 'ap-ple'], ['🐯', 'ti-ger'], ['🐒', 'mon-key'], ['💧', 'wa-ter'],
+      ['🌸', 'flow-er'], ['🍌', 'ba-na-na'], ['🐘', 'el-e-phant'], ['☔', 'um-brel-la'], ['🍅', 'to-ma-to'], ['🦋', 'but-ter-fly'],
+      ['🍉', 'wa-ter-mel-on'], ['🐛', 'cat-er-pil-lar'], ['🐊', 'al-li-ga-tor'], ['🚁', 'hel-i-cop-ter']];
+    const NUM = ['', 'one', 'two', 'three', 'four'];
+    const draw = K.bag(WORDS);
+    const ui = K.setup({ title: 'Clap the beats!' });
+    const prompt = K.el('div', 'av-prompt'), drum = K.el('button', 'drum', '🥁'), row = K.el('div', 'av-choices');
+    ui.stage.append(prompt, drum, row);
+    let cur, parts, at, misses, locked, timer;
+    const whole = () => parts.join('');
+    function show() {
+      prompt.innerHTML = '<div class="av-big">' + cur[0] + '</div><div class="beats">' + parts.map((p, i) => '<span class="' + (i < at ? 'on' : '') + '">' + (i < at ? p : '') + '</span>').join('') + '</div>';
+    }
+    function next() {
+      clearTimeout(timer);
+      cur = draw(); parts = cur[1].split('-'); at = 0; misses = 0; locked = false; row.innerHTML = ''; drum.style.display = '';
+      show(); K.say(whole() + '. Tap the drum for each beat.');
+    }
+    drum.onclick = () => {
+      if (locked || at >= parts.length) return;
+      K.wake(); K.tone(110, .22, .5, 'triangle'); K.say(parts[at], { rate: .8 }); at++; show();
+      drum.classList.remove('av-pop'); void drum.offsetWidth; drum.classList.add('av-pop');
+      if (at === parts.length) timer = setTimeout(ask, 900);
+    };
+    function ask() {
+      drum.style.display = 'none';
+      K.say('How many beats in ' + whole() + '?');
+      const n = parts.length, opts = n <= 2 ? [1, 2, 3] : [n - 2, n - 1, n].map(x => x + (n === 4 ? 0 : 1)).filter(x => x >= 1 && x <= 4);
+      [...new Set(opts.concat(n))].sort().forEach(o => {
+        const b = K.el('button', 'av-choice', '<span class="e">' + o + '</span>');
+        b.onclick = () => {
+          if (locked) return; K.wake();
+          if (o === n) { locked = true; b.classList.add('right'); timer = K.won('Yes! ' + whole() + ' has ' + NUM[n] + (n === 1 ? ' beat.' : ' beats.'), next); }
+          else { K.wrong(b); K.say('Count the blocks.'); if (++misses >= 2) [...row.children].forEach(x => { if (x._ok) x.classList.add('hint'); }); }
+        };
+        b._ok = o === n; row.appendChild(b);
+      });
+    }
+    prompt.onclick = () => { K.wake(); K.say(whole()); };
+    next();
+  </script>
+</body>
+</html>

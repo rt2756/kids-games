@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Picture Graph</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#2193b0,#6dd5ed); --av-ink: #06324a; }
+  .pg { display:flex; flex-direction:column; align-items:center; gap:.3em; }
+  .basket { display:flex; flex-wrap:wrap; justify-content:center; gap:.1em; width:8em; min-height:2.5em; background:rgba(255,255,255,.5); border-radius:.4em; padding:.15em; }
+  .fr { border:none; background:none; font-size:1em; line-height:1.1; padding:0 .05em; cursor:pointer; }
+  .cols { display:flex; gap:.5em; align-items:flex-end; border-bottom:.12em solid #06324a; padding:0 .4em; }
+  .col { display:flex; flex-direction:column; align-items:center; }
+  .stack { display:flex; flex-direction:column-reverse; height:6.7em; width:1.5em; align-items:center; background:repeating-linear-gradient(to top, rgba(255,255,255,.55) 0 1.06em, rgba(255,255,255,.2) 1.06em 1.115em); border-radius:.2em .2em 0 0; line-height:1.115; }
+  .col b { font-size:.9em; line-height:1.3; filter:grayscale(.2); }
+  .av-choice { min-width:clamp(64px,17vmin,110px); min-height:clamp(64px,17vmin,110px); }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: sorting into groups, then reading the graph it makes. Tap each
+    // fruit to send it to its own column; then answer questions by looking at
+    // which column is tallest and counting.
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const FRUIT = [['🍎', 'apples', 'apple'], ['🍌', 'bananas', 'banana'], ['🍇', 'grapes', 'grape'], ['🍊', 'oranges', 'orange'], ['🍓', 'strawberries', 'strawberry'], ['🥭', 'mangoes', 'mango'], ['🍐', 'pears', 'pear']];
+    const NUM = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'];
+    const S = K.shell('', []);
+    const box = K.el('div', 'pg', '<div class="basket"></div><div class="cols"></div>'), row = K.el('div', 'av-choices');
+    S.fit.appendChild(box); S.ui.stage.insertBefore(row, S.bar);
+    const basket = box.firstChild, cols = box.lastChild;
+    S.ui.setTitle('Picture graph');
+    let kinds, counts, placed, qs, misses, locked, timer;
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth / 8, S.fit.clientHeight / 10.5, 62)); box.style.fontSize = s + 'px'; }
+    function tell(l) { S.intro = l; S.sub.textContent = l; K.say(l); }
+    function ask() {
+      row.innerHTML = ''; misses = 0;
+      if (!qs.length) { timer = K.won('You can read a picture graph!', next); return; }
+      const q = qs.shift(); tell(q.text);
+      q.opts.forEach(o => {
+        const b = K.el('button', 'av-choice', '<span class="e">' + o + '</span>');
+        b.onclick = () => { if (locked) return; K.wake();
+          if (o === q.ok) { b.classList.add('right'); A.playChime('yay'); locked = true; K.say(q.yes); timer = setTimeout(() => { locked = false; ask(); }, K.speakMs(q.yes) + 500); }
+          else { K.wrong(b); K.say('Look at the columns again.'); if (++misses >= 2) [...row.children].forEach(x => { if (x._ok) x.classList.add('hint'); }); } };
+        b._ok = o === q.ok; row.appendChild(b);
+      });
+    }
+    function next() {
+      clearTimeout(timer); locked = false; row.innerHTML = '';
+      kinds = U.shuffle(FRUIT).slice(0, 3); counts = U.shuffle([1, 2, 3, 4, 5, 6]).slice(0, 3); placed = [0, 0, 0];
+      basket.innerHTML = ''; cols.innerHTML = '';
+      const all = U.shuffle(kinds.flatMap((k, i) => Array(counts[i]).fill(i)));
+      kinds.forEach(k => cols.appendChild(K.el('div', 'col', '<div class="stack"></div><b>' + k[0] + '</b>')));
+      all.forEach(i => {
+        const b = K.el('button', 'fr', kinds[i][0]);
+        b.onclick = () => { K.wake(); b.remove(); cols.children[i].firstChild.appendChild(K.el('span', 'av-pop', kinds[i][0])); placed[i]++; A.playPop(); K.say(NUM[placed[i]] + ' ' + kinds[i][placed[i] === 1 ? 2 : 1]);
+          if (!basket.children.length) {
+            const hi = counts.indexOf(Math.max(...counts)), lo = counts.indexOf(Math.min(...counts)), k = Math.floor(Math.random() * 3), es = kinds.map(x => x[0]);
+            qs = [{ text: 'Which has the most?', opts: es, ok: es[hi], yes: 'Yes! The ' + kinds[hi][1] + ' column is the tallest.' },
+              { text: 'Which has the fewest?', opts: es, ok: es[lo], yes: 'Yes! The ' + kinds[lo][1] + ' column is the shortest.' },
+              { text: 'How many ' + kinds[k][1] + '?', opts: counts.slice().sort((a, b) => a - b), ok: counts[k], yes: 'Yes! ' + NUM[counts[k]] + '.' }];
+            timer = setTimeout(ask, 900);
+          } };
+        basket.appendChild(b);
+      });
+      size(); tell('Sort the fruit! Tap each one to put it in its column.');
+    }
+    addEventListener('resize', size);
+    next();
+  </script>
+</body>
+</html>

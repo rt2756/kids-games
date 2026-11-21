@@ -73,6 +73,8 @@ html[data-theme="dark"] .av-choice.right { background: #9be07c; }
   body.av:has(.av-puzzle) .av-score { left: auto; right: 76px; transform: none; top: 16px; animation: none; }
   .av-puzzle { flex-direction: row; gap: 12px; }
   .av-puzzle .av-hint { display: none; }
-  .av-puzzle .av-bar { flex-direction: column; flex-wrap: nowrap; gap: 8px; }
+  .av-puzzle .av-bar { flex-direction: column; flex-wrap: wrap; align-content: center; max-height: 100%; gap: 8px; }
   .av-puzzle .av-bar .av-btn { font-size: 14px; padding: 8px 14px; }
 }
+.av-drag { z-index: 50; transition: none !important; filter: drop-shadow(0 8px 10px rgba(0,0,0,.35)); cursor: grabbing; }
+.av-glow { outline: 5px solid #ffd93b; outline-offset: 2px; animation: av-pulse .8s ease-in-out infinite; z-index: 4; }

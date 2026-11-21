@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Frog Hops</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#00b09b,#96c93d); --av-ink: #073b2a; }
+  .nline { display:grid; grid-template-columns:repeat(11,1fr); gap:3px; align-items:end; }
+  .pad { border:none; background:none; padding:0; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; font-size:inherit; min-width:0; font-family:inherit; }
+  .pad i { font-style:normal; font-size:1.9em; line-height:1.1; min-height:1.2em; }
+  .pad b { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:1; border-radius:50%; background:#1e7a3c; color:#fff; font-weight:900; box-shadow:0 5px 0 rgba(0,0,0,.25); }
+  .pad.hop b { background:#ffe066; color:#333; } .pad.wrong { animation:av-shake .35s; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: the number line — adding is hopping forward, taking away is
+    // hopping back. Say where the frog will land; then watch it hop and count.
+    const K = KidsKit, A = KidsAudio;
+    const S = K.shell('', [['💡 Hint', () => pads[target] && pads[target].classList.add('av-glow')]]);
+    const line = K.el('div', 'nline'); S.fit.appendChild(line);
+    S.ui.setTitle('Frog hops');
+    let lo, from, hop, target, frog, pads, round = 0, misses, locked, timer;
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth / 11, 96)); line.style.width = s * 11 + 'px'; line.style.height = Math.min(S.fit.clientHeight, s * 2.4) + 'px'; line.style.fontSize = Math.floor(s * .42) + 'px'; }
+    function draw() { Object.keys(pads).forEach(n => { pads[n].firstChild.textContent = +n === frog ? '🐸' : ''; }); }
+    function next() {
+      clearTimeout(timer); misses = 0; locked = false;
+      const top = round < 8 ? 10 : 20, back = round >= 3 && Math.random() < .5; round++;
+      hop = 1 + Math.floor(Math.random() * (round < 4 ? 3 : 5));
+      from = back ? hop + Math.floor(Math.random() * (top - hop + 1)) : Math.floor(Math.random() * (top - hop + 1));
+      target = back ? from - hop : from + hop; frog = from;
+      lo = Math.max(0, Math.min(Math.min(from, target) - 2, top - 10));
+      line.innerHTML = ''; pads = {};
+      for (let n = lo; n <= lo + 10; n++) { const p = pads[n] = K.el('button', 'pad', '<i></i><b>' + n + '</b>'); p.onclick = () => tap(n, p); line.appendChild(p); }
+      size(); draw();
+      S.intro = 'The frog is on ' + from + '. It hops ' + hop + (back ? ' back' : ' forward') + '. Where does it land?'; S.sub.textContent = S.intro; K.say(S.intro);
+    }
+    function tap(n, node) {
+      if (locked) return; K.wake();
+      if (n !== target) { K.wrong(node); K.say('Count ' + hop + ' hops from ' + from + '.'); if (++misses >= 2) pads[target].classList.add('av-glow'); return; }
+      locked = true; pads[target].classList.remove('av-glow');
+      const dir = target > from ? 1 : -1; let done = 0;
+      const tick = () => {
+        if (frog === target) { const l = from + (dir > 0 ? ' and ' + hop + ' more is ' : ' take away ' + hop + ' is ') + target + '!'; S.sub.textContent = from + (dir > 0 ? ' + ' : ' − ') + hop + ' = ' + target; timer = K.won(l, next); return; }
+        frog += dir; done++; K.tone(440 + done * 60, .12, .25); pads[frog].classList.add('hop'); draw(); timer = setTimeout(tick, 480);
+      };
+      tick();
+    }
+    addEventListener('resize', size);
+    next();
+  </script>
+</body>
+</html>

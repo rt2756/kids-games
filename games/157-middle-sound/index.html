@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Middle Sound</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#00c6ff,#0072ff); --av-ink: #fff; }
+  .slots { display:flex; gap:8px; justify-content:center; }
+  .slots span { width:clamp(52px,14vmin,92px); height:clamp(52px,14vmin,92px); border-radius:16px; background:#fff; color:#333; font-weight:900; font-size:clamp(30px,8.5vmin,58px); display:flex; align-items:center; justify-content:center; box-shadow:0 5px 0 rgba(0,0,0,.2); }
+  .slots .gap { background:#ffe066; color:#b45309; } .slots .got { background:#b6f09c; color:#14532d; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: hearing each sound in a short word — first, then last, then the
+    // middle vowel, which is the hardest to hear. The word is shown with one
+    // letter missing; pick the sound that belongs there.
+    const K = KidsKit, U = KidsUtil;
+    const WORDS = [['🐱', 'cat'], ['🐶', 'dog'], ['☀️', 'sun'], ['🐷', 'pig'], ['🐔', 'hen'], ['🚌', 'bus'], ['🥤', 'cup'], ['🛏️', 'bed'], ['🎩', 'hat'], ['🦇', 'bat'], ['🦊', 'fox'],
+      ['🖊️', 'pen'], ['🗺️', 'map'], ['🥅', 'net'], ['🪵', 'log'], ['🍲', 'pot'], ['🐛', 'bug'], ['🚐', 'van'], ['🕸️', 'web'], ['📦', 'box'], ['🥜', 'nut'], ['🦵', 'leg'], ['🧢', 'cap'], ['🔟', 'ten']];
+    const WHERE = ['at the start', 'in the middle', 'at the end'];
+    const draw = K.bag(WORDS);
+    K.quiz({ title: 'Which sound is missing?', next(round) {
+      const [e, w] = draw(), pos = round < 4 ? 0 : round < 8 ? 2 : round % 3 === 2 ? U.rand([0, 2]) : 1, right = w[pos];
+      const pool = pos === 1 ? [...'aeiou'] : [...'bcdfghlmnprstvx'];
+      const opts = [right].concat(U.shuffle(pool.filter(c => c !== right)).slice(0, 2));
+      return { show: '<div class="av-big">' + e + '</div><div class="slots">' + [...w].map((c, i) => '<span class="' + (i === pos ? 'gap' : '') + '">' + (i === pos ? '?' : c) + '</span>').join('') + '</div>',
+        say: w + '. Which sound is ' + WHERE[pos] + ' of ' + w + '?',
+        choices: U.shuffle(opts).map(c => ({ html: '<span class="e">' + c + '</span>', ok: c === right, say: 'Say it slowly. ' + [...w].join(', ') + '.' })),
+        after() { const g = document.querySelector('.slots .gap'); if (g) { g.textContent = right; g.classList.add('got'); } },
+        praise: 'Yes! ' + [...w].join(', ') + '. ' + w + '!' };
+    } });
+  </script>
+</body>
+</html>

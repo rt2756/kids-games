@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Balance It</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#373b44,#4286f4); --av-ink: #fff; }
+  .scale { position:relative; }
+  .post { position:absolute; left:50%; top:22%; bottom:0; width:4%; transform:translateX(-50%); background:#cfd8dc; border-radius:8px 8px 0 0; }
+  .post::after { content:''; position:absolute; left:-250%; right:-250%; bottom:0; height:9%; background:#cfd8dc; border-radius:8px; }
+  .beam { position:absolute; left:6%; right:6%; top:20%; height:4%; background:#eceff1; border-radius:99px; transition:transform .35s; z-index:2; }
+  .pan { position:absolute; top:100%; width:38%; min-height:1100%; transition:transform .35s; transform-origin:top center; display:flex; flex-wrap:wrap-reverse; align-content:flex-start; justify-content:center; gap:3%;
+    padding:8% 2% 3%; border-bottom:.5em solid #ffd54f; border-radius:0 0 40% 40% / 0 0 18% 18%; }
+  .pan.l { left:-6%; } .pan.r { right:-6%; }
+  .w { border:none; font:inherit; font-weight:900; font-size:1em; background:#ffe066; color:#333; border-radius:.5em; min-width:2.2em; height:2.2em; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:inset 0 -.2em 0 rgba(0,0,0,.18); }
+  .w.big { background:#ff8a65; color:#fff; min-width:3em; height:3em; font-size:1.25em; cursor:default; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: equality — both sides of the scale must weigh the same. Add
+    // weights to the right pan until it balances; later levels start with some
+    // weight already there, so the question becomes "what is missing?".
+    const K = KidsKit, A = KidsAudio;
+    const INTRO = 'Make the scale balance. Tap weights to put them on the right side.';
+    const S = K.shell(INTRO, [['🔄 Again', () => L.go(L.n)]]);
+    const scale = K.el('div', 'scale', '<div class="beam"><div class="pan l"></div><div class="pan r"></div></div><div class="post"></div>');
+    const keys = K.el('div', 'av-bar'); S.fit.appendChild(scale); S.ui.stage.insertBefore(keys, S.bar);
+    const beam = scale.firstChild, panL = beam.children[0], panR = beam.children[1];
+    let left, given, mine, weights, locked, timer, first = true;
+    const sum = () => given + mine.reduce((a, b) => a + b, 0);
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight * 1.5, 620)); scale.style.width = s + 'px'; scale.style.height = s * .62 + 'px'; scale.style.fontSize = s * .045 + 'px'; }
+    function draw() {
+      const d = Math.max(-14, Math.min(14, (sum() - left) * 3));
+      beam.style.transform = 'rotate(' + d + 'deg)'; panL.style.transform = panR.style.transform = 'rotate(' + -d + 'deg)';
+      panL.innerHTML = '<span class="w big">' + left + '</span>';
+      panR.innerHTML = (given ? '<span class="w big">' + given + '</span>' : '') + mine.map((w, i) => '<button class="w" data-i="' + i + '">' + w + '</button>').join('');
+      S.sub.textContent = left + (sum() === left ? ' = ' : sum() > left ? ' < ' : ' > ') + (given ? given + (mine.length ? ' + ' : '') : '') + (mine.join(' + ') || (given ? '' : '0'));
+    }
+    panR.onclick = e => { const b = e.target.closest('button'); if (!b || locked) return; mine.splice(+b.dataset.i, 1); A.playPop(); draw(); };
+    function add(w) {
+      if (locked || mine.length >= 8) return;
+      mine.push(w); A.playPop(); draw();
+      if (sum() === left) { locked = true; timer = K.won('Balanced! ' + (given ? given + ' and ' : '') + mine.join(' and ') + ' make ' + left + '.', () => L.win()); }
+      else if (sum() > left) K.say('Too heavy! Tap a weight on the pan to take it off.');
+    }
+    const L = K.levels('balance-it', S.ui, n => {
+      clearTimeout(timer); locked = false; mine = [];
+      const top = n < 3 ? 6 : n < 6 ? 10 : n < 9 ? 20 : 50;
+      left = Math.max(2, 2 + Math.floor(Math.random() * (top - 1)));
+      given = n >= 2 && n % 2 === 0 ? 1 + Math.floor(Math.random() * (left - 1)) : 0;
+      weights = top <= 6 ? [1, 2] : top <= 10 ? [1, 2, 5] : top <= 20 ? [1, 2, 5, 10] : [1, 5, 10, 20];
+      keys.innerHTML = ''; weights.forEach(w => { const b = K.el('button', 'av-btn', '+' + w); b.onclick = () => { K.wake(); add(w); }; keys.appendChild(b); });
+      size(); draw();
+      K.say(first ? INTRO : given ? left + ' on the left. ' + given + ' on the right. What is missing?' : 'Make ' + left + '.'); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

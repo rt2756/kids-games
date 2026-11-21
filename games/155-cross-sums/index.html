@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Cross Sums</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#232526,#5a3f7a); --av-ink: #fff; }
+  .cs { display:grid; gap:4px; }
+  .box { border:none; border-radius:14%; background:#fff; color:#1d4ed8; font-family:inherit; font-weight:900; font-size:inherit; padding:0; cursor:pointer; min-width:0; min-height:0; }
+  .box.fix { background:#d9dde6; color:#333; cursor:default; } .box.sel { outline:5px solid #ffd93b; outline-offset:-2px; }
+  .tot { display:flex; align-items:center; justify-content:center; font-weight:900; border-radius:50%; background:rgba(255,255,255,.16); margin:10%; }
+  .tot.ok { background:#22c55e; } .tot.bad { background:#ef4444; }
+  .dig { padding:8px 0 !important; width:clamp(38px,9.4vmin,54px); }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: arithmetic under constraints. Fill the grid so that every row
+    // adds up to the number on its right and every column to the number below.
+    // Any filling that satisfies all the totals wins; the grid a level was
+    // made from guarantees there is at least one.
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const LEVELS = [[2, 3, 2], [2, 5, 1], [3, 4, 5], [3, 6, 4], [3, 9, 3], [4, 6, 8], [4, 9, 6], [4, 9, 4]];   // size, biggest digit, cells given
+    const INTRO = 'Fill the boxes. Each row must add up to the number at its end, and each column to the number below it.';
+    const S = K.shell(INTRO, [['🔄 Again', () => L.go(L.n)], ['💡 Hint', hint]]);
+    const board = K.el('div', 'cs'), pad = K.el('div', 'av-bar'); S.fit.appendChild(board); S.ui.stage.insertBefore(pad, S.bar);
+    let N, cap, sol, val, fixed, sel, locked, timer, first = true;
+    const rowSum = (a, r) => a.slice(r * N, r * N + N).reduce((x, y) => x + y, 0), colSum = (a, c) => a.reduce((x, y, i) => x + (i % N === c ? y : 0), 0);
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight, 560) / (N + 1)); board.style.width = board.style.height = s * (N + 1) + 'px'; board.style.gridTemplateColumns = board.style.gridTemplateRows = 'repeat(' + (N + 1) + ',1fr)'; board.style.fontSize = Math.floor(s * .46) + 'px'; }
+    function draw() {
+      board.innerHTML = ''; let all = true;
+      for (let r = 0; r <= N; r++) for (let c = 0; c <= N; c++) {
+        if (r === N && c === N) { board.appendChild(K.el('div')); continue; }
+        if (r === N || c === N) {
+          const want = r === N ? colSum(sol, c) : rowSum(sol, r), have = r === N ? colSum(val, c) : rowSum(val, r);
+          const full = val.every((v, i) => (r === N ? i % N !== c : Math.floor(i / N) !== r) || v), ok = full && have === want;
+          if (!ok) all = false;
+          board.appendChild(K.el('div', 'tot' + (ok ? ' ok' : full ? ' bad' : ''), want)); continue;
+        }
+        const i = r * N + c, b = K.el('button', 'box' + (fixed[i] ? ' fix' : '') + (i === sel ? ' sel' : ''), val[i] || '');
+        b.onclick = () => { if (locked || fixed[i]) return; K.wake(); sel = i; draw(); };
+        board.appendChild(b);
+      }
+      if (all && !locked) { locked = true; sel = -1; timer = K.won('Every row and column adds up! Brilliant!', () => L.win()); }
+    }
+    function put(v) { if (locked || sel < 0) return; val[sel] = v; A.playPop(); const nx = val.findIndex((x, i) => !x && i > sel); if (v) sel = nx >= 0 ? nx : val.findIndex(x => !x) >= 0 ? val.findIndex(x => !x) : sel; draw(); }
+    function hint() { if (locked) return; const i = val.findIndex((v, k) => !fixed[k] && v !== sol[k]); if (i < 0) return; val[i] = sol[i]; fixed[i] = true; sel = val.findIndex(x => !x); K.tone(880, .2, .25); draw(); }
+    const L = K.levels('cross-sums', S.ui, n => {
+      clearTimeout(timer); locked = false;
+      let g; [N, cap, g] = LEVELS[Math.min(n, LEVELS.length - 1)];
+      sol = [...Array(N * N)].map(() => 1 + Math.floor(Math.random() * cap));
+      fixed = sol.map(() => false); U.shuffle([...sol.keys()]).slice(0, g).forEach(i => { fixed[i] = true; });
+      val = sol.map((v, i) => fixed[i] ? v : 0); sel = val.findIndex(x => !x);
+      pad.innerHTML = '';
+      for (let v = 1; v <= cap; v++) { const b = K.el('button', 'av-btn dig', v); b.onclick = () => { K.wake(); put(v); }; pad.appendChild(b); }
+      const e = K.el('button', 'av-btn dig', '⌫'); e.onclick = () => put(0); pad.appendChild(e);
+      size(); draw();
+      K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('keydown', e => { if (/^[1-9]$/.test(e.key) && +e.key <= cap) put(+e.key); else if (e.key === 'Backspace') put(0); });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

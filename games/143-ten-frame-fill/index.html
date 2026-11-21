@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Ten Frame Fill</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#36d1dc,#5b86e5); --av-ink: #fff; }
+  .frame { display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(2,1fr); background:#fff; border:4px solid #333; border-radius:10px; overflow:hidden; box-shadow:0 8px 0 rgba(0,0,0,.2); }
+  .tf { border:2px solid #333; background:#fff; padding:0; cursor:pointer; position:relative; }
+  .tf.red::after, .tf.yel::after { content:''; position:absolute; inset:13%; border-radius:50%; background:#ef4444; box-shadow:inset -4px -5px 0 rgba(0,0,0,.18); }
+  .tf.yel::after { background:#facc15; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: the ten frame — seeing a number as "five and some more", and how
+    // many more make ten. Three kinds of round: show a number, make ten, and
+    // split a number into two parts (a number bond).
+    const K = KidsKit, A = KidsAudio;
+    const W = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+    const S = K.shell('', []);
+    const frame = K.el('div', 'frame'), row = K.el('div', 'av-choices'); S.fit.appendChild(frame); S.ui.stage.insertBefore(row, S.bar);
+    S.ui.setTitle('Ten frame');
+    let fixed, added, want, kind, round = 0, misses, locked, timer, prev = -1;
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth / 5, S.fit.clientHeight / 2, 140)); frame.style.width = s * 5 + 'px'; frame.style.height = s * 2 + 'px'; }
+    function draw() {
+      [...frame.children].forEach((c, i) => { c.className = 'tf' + (i < fixed ? ' red' : i < fixed + added ? ' yel' : ''); });
+    }
+    function tell(line) { S.intro = line; S.sub.textContent = line; K.say(line); }
+    function next() {
+      clearTimeout(timer); misses = 0; locked = false; added = 0; row.innerHTML = '';
+      kind = round < 3 ? 0 : round % 3; round++;
+      let n; do { n = 1 + Math.floor(Math.random() * (kind === 1 ? 9 : 10)); } while (n === prev); prev = n;
+      if (kind === 0) { fixed = 0; want = n; tell('Show ' + W[n] + '. Tap the boxes.'); }
+      else if (kind === 1) {
+        fixed = n; want = 10 - n; tell('Here is ' + W[n] + '. How many more to make ten?');
+        const opts = new Set([want]); while (opts.size < 3) { const o = want + Math.floor(Math.random() * 5) - 2; if (o >= 0 && o <= 10) opts.add(o); }
+        [...opts].sort((a, b) => a - b).forEach(o => {
+          const b = K.el('button', 'av-choice', '<span class="e">' + o + '</span>');
+          b.onclick = () => { if (locked) return; K.wake();
+            if (o === want) { locked = true; b.classList.add('right'); added = want; draw(); timer = K.won('Yes! ' + W[n] + ' and ' + W[want] + ' make ten.', next); }
+            else { K.wrong(b); K.say('Count the empty boxes.'); if (++misses >= 2) [...row.children].forEach(x => { if (x._ok) x.classList.add('hint'); }); } };
+          b._ok = o === want; row.appendChild(b);
+        });
+      } else {
+        const total = Math.max(3, n); fixed = 1 + Math.floor(Math.random() * (total - 1)); want = total - fixed;
+        tell(W[total] + ' is ' + W[fixed] + ' and how many more? Add yellow ones to make ' + W[total] + '.');
+      }
+      size(); draw();
+    }
+    for (let i = 0; i < 10; i++) {
+      const c = K.el('button', 'tf');
+      c.onclick = () => {
+        if (locked || kind === 1) return; K.wake();
+        if (i < fixed) return;
+        added += i < fixed + added ? -1 : 1; A.playPop(); draw(); K.say(W[fixed + added]);
+        if (added === want) { locked = true; timer = K.won(kind === 0 ? 'Yes! That is ' + W[want] + '.' : 'Yes! ' + W[fixed] + ' and ' + W[want] + ' make ' + W[fixed + want] + '.', next); }
+      };
+      frame.appendChild(c);
+    }
+    addEventListener('resize', size);
+    next();
+  </script>
+</body>
+</html>

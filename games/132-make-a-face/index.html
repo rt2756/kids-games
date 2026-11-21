@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Make a Face</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#f6d365,#fda085); --av-ink: #7a3b00; }
+  .face svg { display:block; width:100%; height:100%; overflow:visible; }
+  .part { min-width:clamp(78px,20vmin,120px); min-height:clamp(78px,20vmin,120px); padding:8px; }
+  .part svg { width:clamp(60px,15vmin,96px); height:clamp(60px,15vmin,96px); }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: the parts of a face, then feelings. The child builds a face one
+    // part at a time; the mouth step asks for a happy, sad or surprised mouth.
+    // A wrong pick is named ("that is the nose") and the right one soon glows.
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const SKIN = ['#ffd9b3', '#f1c27d', '#e0ac69', '#c68642', '#8d5524'], HAIR = ['#2b1b0e', '#5a3a1a', '#111', '#b5651d', '#d9a441'];
+    let skin, hair;
+    const eye = x => '<circle cx="' + x + '" cy="92" r="13" fill="#fff" stroke="#333" stroke-width="2.5"/><circle cx="' + x + '" cy="94" r="6.5" fill="#333"/>';
+    const PARTS = {
+      eyes: { name: 'the eyes', box: '48 72 104 40', svg: () => eye(72) + eye(128) },
+      nose: { name: 'the nose', box: '80 100 40 40', svg: () => '<path d="M100 106 L89 131 Q100 137 111 131 Z" fill="rgba(0,0,0,.18)" stroke="#333" stroke-width="2.5" stroke-linejoin="round"/>' },
+      ears: { name: 'the ears', box: '14 80 60 50', svg: () => [34, 166].map(x => '<ellipse cx="' + x + '" cy="106" rx="11" ry="17" fill="' + skin + '" stroke="#333" stroke-width="2.5"/>').join('') },
+      hair: { name: 'the hair', box: '30 12 140 80', svg: () => '<path d="M38 92 Q36 18 100 18 Q164 18 162 92 Q138 52 100 56 Q62 52 38 92Z" fill="' + hair + '" stroke="#333" stroke-width="2.5" stroke-linejoin="round"/>' },
+      happy: { name: 'a happy mouth', feel: 'happy', box: '65 136 70 46', svg: () => '<path d="M74 148 Q100 182 126 148 Z" fill="#c0392b" stroke="#333" stroke-width="2.5" stroke-linejoin="round"/>' },
+      sad: { name: 'a sad mouth', feel: 'sad', box: '65 136 70 46', svg: () => '<path d="M76 170 Q100 144 124 170" fill="none" stroke="#333" stroke-width="6" stroke-linecap="round"/>' },
+      surprised: { name: 'a surprised mouth', feel: 'surprised', box: '65 136 70 46', svg: () => '<ellipse cx="100" cy="160" rx="13" ry="17" fill="#c0392b" stroke="#333" stroke-width="2.5"/>' }
+    };
+    const MOUTHS = ['happy', 'sad', 'surprised'];
+    const S = K.shell('', []);
+    const face = K.el('div', 'face'), tray = K.el('div', 'av-choices'); S.fit.appendChild(face); S.ui.stage.insertBefore(tray, S.bar);
+    S.ui.setTitle('Make a face!');
+    let steps, at, placed, misses, feel, timer;
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight, 520)); face.style.width = face.style.height = s + 'px'; }
+    function draw() {
+      // ears sit behind the head, hair in front of it
+      face.innerHTML = '<svg viewBox="0 0 200 200">' + (placed.includes('ears') ? PARTS.ears.svg() : '') + '<ellipse cx="100" cy="106" rx="66" ry="76" fill="' + skin + '" stroke="#333" stroke-width="2.5"/>'
+        + placed.filter(p => p !== 'ears').map(p => '<g class="av-pop-part">' + PARTS[p].svg() + '</g>').join('') + '</svg>';
+    }
+    function ask() {
+      const want = steps[at], isMouth = MOUTHS.includes(want);
+      const line = isMouth ? 'Give the face ' + PARTS[want].name + '.' : 'Put on ' + PARTS[want].name + '.';
+      S.intro = line; S.sub.textContent = line; K.say(line);
+      misses = 0; tray.innerHTML = '';
+      const opts = isMouth ? MOUTHS : [want].concat(U.shuffle(['eyes', 'nose', 'ears', 'hair', feel].filter(p => p !== want && !placed.includes(p))).slice(0, 2));
+      U.shuffle(opts).forEach(p => {
+        const b = K.el('button', 'av-choice part', '<svg viewBox="' + PARTS[p].box + '">' + PARTS[p].svg() + '</svg>');
+        b.onclick = () => {
+          K.wake();
+          if (p !== want) {
+            K.wrong(b); K.say((p === 'eyes' || p === 'ears' ? 'Those are ' : 'That is ') + PARTS[p].name + '. Find ' + PARTS[want].name + '.');
+            if (++misses >= 2) [...tray.children].forEach(x => { if (x._ok) x.classList.add('hint'); });
+            return;
+          }
+          placed.push(p); A.playPop(); K.tone(784, .2, .25); draw();
+          if (++at < steps.length) return ask();
+          tray.innerHTML = '';
+          const l = 'What a ' + PARTS[feel].feel + ' face! Well done!';
+          S.sub.textContent = l; timer = K.won(l, start);
+        };
+        b._ok = p === want; tray.appendChild(b);
+      });
+    }
+    function start() {
+      clearTimeout(timer);
+      skin = U.rand(SKIN); hair = U.rand(HAIR); feel = U.rand(MOUTHS);
+      steps = ['eyes', 'nose', feel, 'ears', 'hair']; at = 0; placed = [];
+      size(); draw(); ask();
+    }
+    S.button('🔄 New face', start);
+    addEventListener('resize', size);
+    start();
+  </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Colouring Book</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#fff1eb,#ace0f9); --av-ink: #2d4a6b; }
+  .paper { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 8px 22px rgba(0,0,0,.2); }
+  .paper svg { display:block; width:100%; height:100%; }
+  .paper svg > * { stroke:#333; stroke-width:2.5; stroke-linejoin:round; cursor:pointer; }
+  .ink { width:clamp(34px,8.4vmin,54px); height:clamp(34px,8.4vmin,54px); border-radius:50%; border:3px solid #fff; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,.25); padding:0; }
+  .ink.on { outline:4px solid #333; transform:scale(1.12); }
+  .av-bar { gap:8px; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: colour names, and filling one area at a time. Tap a colour
+    // (it is named), then tap a part of the picture. No wrong answers.
+    const K = KidsKit, A = KidsAudio;
+    const petals = [0, 60, 120, 180, 240, 300].map(a => '<circle cx="' + (100 + 32 * Math.cos(a * Math.PI / 180)).toFixed(1) + '" cy="' + (72 + 32 * Math.sin(a * Math.PI / 180)).toFixed(1) + '" r="21"/>').join('');
+    const PICS = [
+      ['house', '<rect x="0" y="0" width="200" height="152"/><rect x="0" y="150" width="200" height="50"/><circle cx="168" cy="32" r="19"/><ellipse cx="52" cy="36" rx="30" ry="14"/><rect x="50" y="90" width="100" height="70"/><polygon points="38,92 100,40 162,92"/><rect x="88" y="120" width="24" height="40"/><rect x="60" y="102" width="22" height="22"/><rect x="118" y="102" width="22" height="22"/>'],
+      ['flower', '<rect x="0" y="0" width="200" height="182"/><rect x="0" y="180" width="200" height="20"/><rect x="96" y="100" width="8" height="82"/><ellipse cx="78" cy="150" rx="20" ry="9"/><ellipse cx="122" cy="134" rx="20" ry="9"/>' + petals + '<circle cx="100" cy="72" r="19"/>'],
+      ['fish', '<rect x="0" y="0" width="200" height="176"/><rect x="0" y="174" width="200" height="26"/><polygon points="146,100 190,68 190,132"/><polygon points="80,66 108,38 122,68"/><polygon points="84,134 104,160 116,132"/><ellipse cx="95" cy="100" rx="60" ry="38"/><circle cx="60" cy="90" r="9"/><circle cx="30" cy="48" r="9"/><circle cx="46" cy="26" r="6"/>'],
+      ['car', '<rect x="0" y="0" width="200" height="170"/><rect x="0" y="168" width="200" height="32"/><circle cx="170" cy="30" r="17"/><polygon points="54,102 76,64 134,64 156,102"/><rect x="18" y="100" width="164" height="46" rx="12"/><rect x="80" y="72" width="22" height="26"/><rect x="108" y="72" width="22" height="26"/><circle cx="60" cy="148" r="21"/><circle cx="140" cy="148" r="21"/><circle cx="60" cy="148" r="8"/><circle cx="140" cy="148" r="8"/>'],
+      ['butterfly', '<rect x="0" y="0" width="200" height="200"/><ellipse cx="64" cy="76" rx="36" ry="30"/><ellipse cx="136" cy="76" rx="36" ry="30"/><ellipse cx="72" cy="132" rx="27" ry="23"/><ellipse cx="128" cy="132" rx="27" ry="23"/><circle cx="60" cy="76" r="11"/><circle cx="140" cy="76" r="11"/><ellipse cx="100" cy="102" rx="8" ry="42"/><circle cx="100" cy="54" r="11"/>'],
+      ['balloons', '<rect x="0" y="0" width="200" height="200"/><ellipse cx="50" cy="150" rx="34" ry="14"/><ellipse cx="160" cy="165" rx="30" ry="12"/><ellipse cx="62" cy="62" rx="26" ry="32"/><ellipse cx="108" cy="46" rx="26" ry="32"/><ellipse cx="146" cy="76" rx="26" ry="32"/><rect x="92" y="150" width="30" height="26" rx="4"/>']
+    ];
+    const INKS = [['red', '#ef4444'], ['orange', '#fb923c'], ['yellow', '#fde047'], ['green', '#22c55e'], ['blue', '#3b82f6'], ['sky blue', '#7dd3fc'],
+      ['purple', '#a855f7'], ['pink', '#f9a8d4'], ['brown', '#a16207'], ['grey', '#9ca3af'], ['white', '#ffffff']];
+    const S = K.shell('Pick a colour, then tap the picture.', []);
+    const box = K.el('div', 'paper'); S.fit.appendChild(box);
+    const pal = K.el('div', 'av-bar'); S.ui.stage.insertBefore(pal, S.bar);
+    let p = 0, ink = INKS[0], praised = false;
+    INKS.forEach((c, k) => {
+      const b = K.el('button', 'ink' + (k ? '' : ' on')); b.style.background = c[1]; b.setAttribute('aria-label', c[0]);
+      b.onclick = () => { K.wake(); ink = c; pal.querySelectorAll('.ink').forEach(x => x.classList.toggle('on', x === b)); A.playPop(); K.say(c[0]); };
+      pal.appendChild(b);
+    });
+    S.button('◀', () => { p = (p + PICS.length - 1) % PICS.length; show(); });
+    S.button('🧽 Clear', () => show(true));
+    S.button('▶', () => { p = (p + 1) % PICS.length; show(); });
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight, 640)); box.style.width = box.style.height = s + 'px'; }
+    function show(quiet) {
+      praised = false;
+      box.innerHTML = '<svg viewBox="0 0 200 200">' + PICS[p][1] + '</svg>';
+      box.querySelectorAll('svg > *').forEach(n => {
+        n.setAttribute('fill', '#fff');
+        n.addEventListener('pointerdown', () => {
+          K.wake(); n.setAttribute('fill', ink[1]); n.dataset.done = 1; A.playPop();
+          if (!praised && [...box.querySelectorAll('svg > *')].every(x => x.dataset.done)) {
+            praised = true; K.star(); A.playChime('yay'); K.confetti(); K.say('Beautiful! You coloured the whole picture!');
+          }
+        });
+      });
+      size();
+      if (quiet !== true) K.say('Colour the ' + PICS[p][0] + '. ' + (p ? '' : 'Pick a colour, then tap the picture.'));
+    }
+    addEventListener('resize', size);
+    show();
+  </script>
+</body>
+</html>

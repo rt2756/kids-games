@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Sound Pairs</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#4b6cb7,#182848); --av-ink: #fff; }
+  .deck { display:grid; gap:10px; justify-content:center; align-content:center; }
+  .snd { border:none; border-radius:18%; background:#fff; font-size:inherit; line-height:1; cursor:pointer; padding:0; box-shadow:0 6px 0 rgba(0,0,0,.25); opacity:.92; }
+  .snd.open { background:#ffe066; transform:scale(1.05); }
+  .snd.done { background:#b6f09c; box-shadow:none; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: listening memory. Every card plays a sound; find the two cards
+    // that sound the same. Cards show nothing until a pair is found, so it is
+    // done by ear. Each sound is a different shape of note, not just a pitch.
+    const K = KidsKit, A = KidsAudio, U = KidsUtil;
+    const SOUNDS = [
+      ['🔔', () => K.tone(1320, .5, .3)],
+      ['🥁', () => K.tone(95, .45, .5, 'triangle')],
+      ['🚀', () => K.tone(260, .5, .3, 'sine', 0, 1400)],
+      ['💧', () => K.tone(1300, .45, .3, 'sine', 0, 260)],
+      ['🐤', () => { K.tone(1900, .1, .25); K.tone(2100, .1, .25, 'sine', .16); K.tone(1900, .1, .25, 'sine', .32); }],
+      ['🐝', () => K.tone(170, .55, .2, 'sawtooth')],
+      ['🎺', () => { K.tone(392, .16, .22, 'square'); K.tone(523, .16, .22, 'square', .18); K.tone(659, .28, .22, 'square', .36); }],
+      ['🐸', () => { K.tone(220, .14, .3, 'square', 0, 330); K.tone(220, .14, .3, 'square', .26, 330); }]
+    ];
+    const PAIRS = [2, 3, 4, 5, 6, 8];
+    const INTRO = 'Listen! Tap a card to hear it. Find the two that sound the same.';
+    const S = K.shell(INTRO, [['🔄 Again', () => L.go(L.n)], ['💡 Hint', hint]]);
+    const board = K.el('div', 'deck'); S.fit.appendChild(board);
+    let cards, open, busy, left, timer, first = true;
+    function size() {
+      const n = cards.length, W = S.fit.clientWidth, H = S.fit.clientHeight;
+      let best = 0, cols = 1;
+      for (let c = 1; c <= n; c++) { const s = Math.min(W / c, H / Math.ceil(n / c)); if (s > best) { best = s; cols = c; } }
+      const s = Math.floor(Math.min(best, 170));
+      board.style.gridTemplateColumns = 'repeat(' + cols + ',' + (s - 10) + 'px)'; board.style.gridAutoRows = (s - 10) + 'px'; board.style.fontSize = Math.floor(s * .45) + 'px';
+    }
+    function tap(c) {
+      if (busy || c.done || open.includes(c)) return;
+      K.wake(); SOUNDS[c.s][1]();
+      c.node.classList.add('open'); c.node.classList.remove('av-glow'); open.push(c);
+      if (open.length < 2) return;
+      busy = true;
+      const [a, b] = open;
+      setTimeout(() => {
+        if (a.s === b.s) {
+          [a, b].forEach(x => { x.done = true; x.node.classList.add('done'); x.node.textContent = SOUNDS[x.s][0]; });
+          A.playChime('yay');
+          if (--left === 0) timer = K.won('You matched every sound! Super listening!', () => L.win());
+          else K.say('They match!');
+        } else [a, b].forEach(x => x.node.classList.remove('open'));
+        open = []; busy = false;
+      }, 750);
+    }
+    function hint() {
+      if (busy) return;
+      const c = cards.find(x => !x.done); if (!c) return;
+      SOUNDS[c.s][1](); cards.filter(x => x.s === c.s).forEach(x => x.node.classList.add('av-glow'));
+    }
+    const L = K.levels('sound-pairs', S.ui, n => {
+      clearTimeout(timer);
+      const k = PAIRS[Math.min(n, PAIRS.length - 1)], pick = U.shuffle([...SOUNDS.keys()]).slice(0, k);
+      cards = U.shuffle(pick.concat(pick)).map(s => ({ s })); open = []; busy = false; left = k;
+      board.innerHTML = '';
+      cards.forEach(c => { c.node = K.el('button', 'snd', '🔊'); c.node.onclick = () => tap(c); board.appendChild(c.node); });
+      size();
+      K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Bunny Path</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#56ab2f,#a8e063); --av-ink: #12360b; }
+  .field { display:grid; gap:3px; }
+  .fc { background:rgba(255,255,255,.55); border-radius:14%; display:flex; align-items:center; justify-content:center; line-height:1; min-width:0; min-height:0; }
+  .prog { display:flex; flex-wrap:wrap; gap:4px; justify-content:center; min-height:44px; align-items:center; background:rgba(255,255,255,.75); border-radius:14px; padding:6px 12px; max-width:100%; }
+  .prog .empty { font-weight:800; opacity:.55; font-size:14px; color:#333; }
+  .stepc { font-size:clamp(18px,4.6vmin,28px); line-height:1; border-radius:8px; padding:2px; }
+  .stepc.done { background:#b6f09c; } .stepc.bad { background:#ff8a8a; animation:av-shake .35s; }
+  .key { font-size:clamp(20px,5.4vmin,30px) !important; padding:8px 14px !important; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: sequencing — plan every step first, then run the plan. Line up
+    // arrows, press Go, and the bunny follows them exactly. A bump sends the
+    // bunny back so the plan can be fixed (that is debugging).
+    const K = KidsKit, A = KidsAudio;
+    const ARROWS = ['⬆️', '➡️', '⬇️', '⬅️'], DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
+    const INTRO = 'Plan the path! Tap arrows to line up the steps, then press Go.';
+    const S = K.shell(INTRO, []);
+    const board = K.el('div', 'field'), prog = K.el('div', 'prog'), keys = K.el('div', 'av-bar');
+    S.fit.appendChild(board); S.ui.stage.insertBefore(prog, S.bar); S.ui.stage.insertBefore(keys, S.bar);
+    let N, rocks, start, goal, at, plan, running, timer, cells, first = true;
+    const free = (x, y) => x >= 0 && y >= 0 && x < N && y < N && !rocks.has(y * N + x);
+    function route(from) {
+      const prev = { [from]: null }, q = [from];
+      while (q.length) { const c = q.shift(); if (c === goal) break;
+        for (let d = 0; d < 4; d++) { const x = c % N + DX[d], y = Math.floor(c / N) + DY[d], j = y * N + x; if (free(x, y) && !(j in prev)) { prev[j] = [c, d]; q.push(j); } } }
+      if (!(goal in prev)) return null;
+      const out = []; for (let c = goal; prev[c]; c = prev[c][0]) out.unshift(prev[c][1]); return out;
+    }
+    function size() { const s = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight, 560) / N); board.style.width = board.style.height = s * N + 'px'; board.style.gridTemplateColumns = board.style.gridTemplateRows = 'repeat(' + N + ',1fr)'; board.style.fontSize = Math.floor(s * .62) + 'px'; }
+    function draw(bad) {
+      cells.forEach((c, i) => { c.textContent = i === at ? '🐰' : i === goal ? '🥕' : rocks.has(i) ? '🪨' : ''; });
+      prog.innerHTML = plan.length ? '' : '<span class="empty">your steps go here</span>';
+      plan.forEach((d, i) => prog.appendChild(K.el('span', 'stepc' + (i === bad ? ' bad' : i < running ? ' done' : ''), ARROWS[d])));
+    }
+    function end(pos, ok) {                          // where the plan leads from the start
+      let c = start;
+      for (const d of plan) { const x = c % N + DX[d], y = Math.floor(c / N) + DY[d]; if (!free(x, y)) return ok ? null : c; c = y * N + x; if (c === goal) break; }
+      return c;
+    }
+    function go() {
+      if (running >= 0 || !plan.length) return;
+      at = start; running = 0;
+      const tick = () => {
+        if (at === goal) { running = -2; draw(); timer = K.won('The bunny got the carrot! Great plan!', () => L.win()); return; }
+        if (running >= plan.length) { running = -1; K.say('Not there yet. Add more steps.'); A.playChime('uhoh'); at = start; return draw(); }
+        const d = plan[running], x = at % N + DX[d], y = Math.floor(at / N) + DY[d];
+        if (!free(x, y)) { const bad = running; running = -1; A.playChime('uhoh'); K.say('Bump! Change that step.'); at = start; return draw(bad); }
+        at = y * N + x; running++; K.tone(500 + running * 40, .1, .2); draw();
+        timer = setTimeout(tick, 420);
+      };
+      tick();
+    }
+    function hint() {
+      if (running !== -1) return;
+      const here = end(start, true), r = here == null ? null : route(here);
+      keys.querySelectorAll('.av-btn').forEach(b => b.classList.remove('hint'));
+      if (here == null) { K.say('One of your steps bumps. Take a step away.'); keys.lastChild.classList.add('hint'); }
+      else if (r && r.length) keys.children[r[0]].classList.add('hint');
+    }
+    ARROWS.forEach((a, d) => { const b = K.el('button', 'av-btn key', a); b.onclick = () => { K.wake(); if (running !== -1 || plan.length >= 24) return; plan.push(d); A.playPop(); b.classList.remove('hint'); draw(); }; keys.appendChild(b); });
+    const del = K.el('button', 'av-btn key', '⌫'); del.onclick = () => { if (running !== -1) return; plan.pop(); del.classList.remove('hint'); draw(); }; keys.appendChild(del);
+    S.button('▶️ Go', go); S.button('🗑️ Clear', () => { if (running === -1) { plan = []; draw(); } }); S.button('💡 Hint', hint);
+    const L = K.levels('bunny-path', S.ui, n => {
+      clearTimeout(timer);
+      N = Math.min(3 + Math.floor((n + 1) / 2), 7);
+      let r;
+      do {
+        rocks = new Set(); start = Math.floor(Math.random() * N * N);
+        do { goal = Math.floor(Math.random() * N * N); } while (goal === start);
+        for (let k = 0; k < Math.floor(N * N * (n < 2 ? 0 : .22)); k++) { const c = Math.floor(Math.random() * N * N); if (c !== start && c !== goal) rocks.add(c); }
+        r = route(start);
+      } while (!r || r.length < Math.min(N, 2 + n));
+      at = start; plan = []; running = -1;
+      board.innerHTML = ''; cells = [...Array(N * N)].map(() => { const c = K.el('div', 'fc'); board.appendChild(c); return c; });
+      size(); draw();
+      K.say(first ? INTRO : 'Level ' + (n + 1)); first = false;
+    });
+    addEventListener('resize', size);
+    L.begin();
+  </script>
+</body>
+</html>

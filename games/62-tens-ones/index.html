@@ -7,25 +7,32 @@
 <link rel="stylesheet" href="../../shared/styles.css" />
 <style>
   body { background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
-    height:100vh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+    height:100vh; height:100dvh; width:100vw; overflow:hidden; display:flex; flex-direction:column; align-items:center;
+    --u: clamp(18px, 3.4vmin, 32px); }
   html[data-theme="dark"] body { background: linear-gradient(180deg, #0e2a3e 0%, #07343a 100%); }
   h1 { color:#053a52; font-weight:900; font-size:clamp(18px,4.6vw,28px); margin:0; padding:82px 16px 2px; text-align:center; }
   html[data-theme="dark"] h1 { color:#bfeeff; }
   #target { color:#053a52; font-weight:900; font-size:clamp(30px,8vw,52px); margin:2px 0; }
   html[data-theme="dark"] #target { color:#fff; }
-  #cols { display:flex; gap:18px; flex:1; min-height:0; align-items:stretch; padding:6px 8px; }
+  /* middle area: trays + running total, centred vertically in the free space */
+  #stage { flex:1; min-height:0; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:clamp(6px,1.6vh,16px); padding:6px 8px; box-sizing:border-box; overflow-y:auto; }
+  #cols { display:flex; gap:clamp(12px,3vw,32px); align-items:stretch; justify-content:center; }
   .col { display:flex; flex-direction:column; align-items:center; }
-  .colhead { font-weight:900; color:#053a52; font-size:clamp(15px,3.6vw,20px); margin-bottom:4px; }
+  .colhead { font-weight:900; color:#053a52; font-size:clamp(15px,3.6vw,22px); margin-bottom:4px; }
   html[data-theme="dark"] .colhead { color:#bfeeff; }
-  .tray { width:clamp(120px,40vw,200px); flex:1; min-height:120px; background:rgba(255,255,255,.4); border-radius:14px;
-    padding:8px; display:flex; flex-wrap:wrap; align-content:flex-start; gap:5px; justify-content:center; }
-  .rod { width:18px; height:64px; background:#1565c0; border-radius:4px; box-shadow:inset 0 0 0 2px rgba(255,255,255,.3); }
-  .unit { width:20px; height:20px; background:#ff7043; border-radius:4px; }
-  #total { color:#053a52; font-weight:900; font-size:clamp(20px,5vw,30px); margin:2px 0; }
+  .tray { width:clamp(130px,40vw,300px); min-height:calc(var(--u) * 4.6); box-sizing:border-box; background:rgba(255,255,255,.4); border-radius:14px;
+    padding:8px; display:flex; flex-wrap:wrap; align-content:center; align-items:center; gap:5px; justify-content:center; flex:1; }
+  .rod { width:calc(var(--u) * .9); height:calc(var(--u) * 3.4); background:#1565c0; border-radius:4px; box-shadow:inset 0 0 0 2px rgba(255,255,255,.3); }
+  .unit { width:var(--u); height:var(--u); background:#ff7043; border-radius:4px; }
+  #total { color:#053a52; font-weight:900; font-size:clamp(20px,5vw,32px); margin:0; text-align:center; }
   html[data-theme="dark"] #total { color:#fff; }
   #total.match { color:#1b8a3a; }
-  #btns { display:flex; gap:10px; padding-bottom:16px; flex-wrap:wrap; justify-content:center; }
-  .btn { border:none; border-radius:14px; padding:12px 18px; font-weight:900; font-size:clamp(16px,4vw,20px); cursor:pointer; font-family:inherit;
+  /* buttons pinned to the very bottom */
+  #btns { display:flex; gap:clamp(10px,3vw,24px); width:100%; box-sizing:border-box; justify-content:center; flex-wrap:wrap;
+    padding:10px 12px calc(14px + env(safe-area-inset-bottom)); }
+  @media (max-height: 520px) { h1 { padding-top:52px; } #target { font-size:clamp(24px,6vh,40px); } }
+  .btn { border:none; border-radius:14px; padding:clamp(12px,2vh,18px) clamp(20px,5vw,36px); font-weight:900; font-size:clamp(20px,5vw,30px); cursor:pointer; font-family:inherit;
     box-shadow:0 6px 0 rgba(0,0,0,.2); }
   .add10 { background:#1565c0; color:#fff; } .add1 { background:#ff7043; color:#fff; } .reset { background:#fff; color:#053a52; }
   .btn:active { transform:translateY(3px); }
@@ -39,11 +46,13 @@
   <div id="score">⭐ 0</div>
   <h1>Build the number with tens and ones</h1>
   <div id="target"></div>
-  <div id="cols">
-    <div class="col"><div class="colhead">Tens (10)</div><div class="tray" id="tensTray"></div></div>
-    <div class="col"><div class="colhead">Ones (1)</div><div class="tray" id="onesTray"></div></div>
+  <div id="stage">
+    <div id="cols">
+      <div class="col"><div class="colhead">Tens (10)</div><div class="tray" id="tensTray"></div></div>
+      <div class="col"><div class="colhead">Ones (1)</div><div class="tray" id="onesTray"></div></div>
+    </div>
+    <div id="total"></div>
   </div>
-  <div id="total"></div>
   <div id="btns">
     <button class="btn add10" id="add10">+ 10</button>
     <button class="btn add1" id="add1">+ 1</button>

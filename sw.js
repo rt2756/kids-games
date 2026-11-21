@@ -9,7 +9,7 @@
 self.window = self;                 // games.js assigns to window.*
 importScripts('shared/games.js');
 
-const CACHE = 'kids-v2';
+const CACHE = 'kids-v3';
 const CORE = ['./', 'shared/styles.css', 'shared/common.js', 'shared/games.js', 'shared/kit.js', 'shared/kit.css', 'shared/tubes.js', 'shared/tubes.css',
   'icon.svg', 'manifest.webmanifest'].concat(self.KIDS_GAMES.map(g => 'games/' + g.slug + '/'));
 

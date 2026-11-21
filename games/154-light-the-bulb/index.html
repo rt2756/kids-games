@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Light the Bulb</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#0f2027,#2c5364); --av-ink: #fff; }
+  .circ { width:min(clamp(250px,70vmin,460px), 56vh); height:auto; }
+  .circ .wire { fill:none; stroke:#cfd8dc; stroke-width:6; stroke-linejoin:round; stroke-linecap:round; }
+  .circ .glow { fill:#ffe066; opacity:0; } .circ.lit .glow { opacity:.75; filter:blur(6px); } .circ.lit .wire { stroke:#ffe066; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: electricity needs a closed loop, and only some materials let it
+    // through. Something is put in the gap of a circuit: predict whether the
+    // bulb lights, then watch. Metals conduct; plastic, wood, rubber, paper
+    // and cloth do not. Some rounds use a switch instead.
+    const K = KidsKit, U = KidsUtil;
+    const THINGS = [['🥄', 'steel spoon', 'metal', 1], ['🪙', 'coin', 'metal', 1], ['🔑', 'key', 'metal', 1], ['📎', 'paper clip', 'metal', 1], ['🍴', 'fork', 'metal', 1], ['✂️', 'scissor blades', 'metal', 1], ['🔩', 'bolt', 'metal', 1],
+      ['✏️', 'wooden pencil', 'wood', 0], ['🧦', 'sock', 'cloth', 0], ['🍃', 'leaf', 'a leaf', 0], ['📏', 'plastic ruler', 'plastic', 0], ['🎈', 'balloon', 'rubber', 0], ['🥤', 'plastic cup', 'plastic', 0], ['📄', 'paper', 'paper', 0], ['🧽', 'sponge', 'sponge', 0]];
+    const draw = K.bag(THINGS);
+    function circuit(gap, lit) {
+      return '<svg class="circ' + (lit ? ' lit' : '') + '" viewBox="0 0 300 200"><path class="wire" d="M60 150 H30 V40 H130 M170 40 H270 V150 H215 M185 150 H110"/>'
+        + '<rect x="60" y="134" width="50" height="32" rx="5" fill="#f59e0b"/><rect x="110" y="143" width="7" height="14" fill="#ddd"/><text x="85" y="156" text-anchor="middle" font-size="16">🔋</text>'
+        + '<circle class="glow" cx="150" cy="40" r="40"/><text x="150" y="54" text-anchor="middle" font-size="40">💡</text>'
+        + gap + '</svg>';
+    }
+    const thingGap = e => '<text x="200" y="164" text-anchor="middle" font-size="34">' + e + '</text>';
+    const switchGap = on => '<circle cx="185" cy="150" r="5" fill="#fff"/><circle cx="215" cy="150" r="5" fill="#fff"/><line x1="185" y1="150" x2="' + (on ? 215 : 210) + '" y2="' + (on ? 150 : 126) + '" stroke="#fff" stroke-width="5" stroke-linecap="round"/>';
+    const answers = yes => [{ html: K.card('💡', 'Lights up'), ok: yes, say: 'Think. Can electricity get all the way round?' }, { html: K.card('🌑', 'Stays dark'), ok: !yes, say: 'Think. Can electricity get all the way round?' }];
+    const ui = K.quiz({ title: 'Will the bulb light?', next(round) {
+      const reveal = (gap, lit) => () => { document.querySelector('.av-prompt').innerHTML = circuit(gap, lit); };
+      if (round % 4 === 0) {
+        const on = Math.random() < .5;
+        return { show: circuit(switchGap(on), false), say: 'The switch is ' + (on ? 'closed' : 'open') + '. Will the bulb light?', choices: answers(on), after: reveal(switchGap(on), on),
+          praise: on ? 'Yes! The loop is closed, so electricity flows.' : 'Yes! The loop is broken, so nothing flows.' };
+      }
+      const t = draw(), a = /^[aeiou]/.test(t[1]) ? 'An ' : 'A ';
+      return { show: circuit(thingGap(t[0]), false), say: a + t[1] + ' is in the gap. Will the bulb light?', choices: answers(!!t[3]), after: reveal(thingGap(t[0]), !!t[3]),
+        praise: t[3] ? 'Yes! Metal lets electricity through.' : 'Yes! ' + (t[2] === 'a leaf' ? 'A leaf' : t[2][0].toUpperCase() + t[2].slice(1)) + ' does not let electricity through.' };
+    } });
+  </script>
+</body>
+</html>

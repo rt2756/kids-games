@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>Mirror Paint</title>
+<link rel="stylesheet" href="../../shared/styles.css" />
+<link rel="stylesheet" href="../../shared/kit.css" />
+<style>
+  body { --av-bg: linear-gradient(180deg,#ee9ca7,#ffdde1); --av-ink: #7a1f3d; }
+  .pad { border-radius:22px; box-shadow:0 8px 22px rgba(0,0,0,.25); cursor:crosshair; }
+  .ink { width:clamp(34px,8.4vmin,54px); height:clamp(34px,8.4vmin,54px); border-radius:50%; border:3px solid #fff; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,.25); padding:0; }
+  .ink.on { outline:4px solid #333; transform:scale(1.12); }
+  .av-bar { gap:8px; }
+</style>
+</head>
+<body>
+  <script src="../../shared/common.js"></script>
+  <script src="../../shared/kit.js"></script>
+  <script>
+    // Concept: symmetry, by making it. Whatever is painted on one side appears
+    // on the other; the mirror button adds more mirrors for rangoli patterns.
+    const K = KidsKit, A = KidsAudio;
+    const INKS = [['red', '#ef4444'], ['orange', '#fb923c'], ['yellow', '#facc15'], ['green', '#22c55e'], ['blue', '#3b82f6'], ['purple', '#a855f7'], ['pink', '#ec4899'], ['white', '#ffffff']];
+    const MIRRORS = [[2, '🦋 2 sides'], [4, '✳️ 4 sides'], [8, '🌸 8 sides']];
+    const S = K.shell('Paint on one side. The mirror paints the other side!', []);
+    const cv = K.el('canvas', 'pad'); S.fit.appendChild(cv);
+    const pal = K.el('div', 'av-bar'); S.ui.stage.insertBefore(pal, S.bar);
+    const ctx = cv.getContext('2d');
+    let px, dpr, ink = INKS[0], m = 0, last = null, painted = 0, praised = false;
+    INKS.forEach((c, k) => {
+      const b = K.el('button', 'ink' + (k ? '' : ' on')); b.style.background = c[1];
+      b.onclick = () => { K.wake(); ink = c; pal.querySelectorAll('.ink').forEach(x => x.classList.toggle('on', x === b)); A.playPop(); K.say(c[0]); };
+      pal.appendChild(b);
+    });
+    const mb = S.button(MIRRORS[0][1], () => { m = (m + 1) % 3; mb.textContent = MIRRORS[m][1]; clear(); K.say(MIRRORS[m][0] + ' sides'); });
+    S.button('🧽 Clear', clear);
+    function clear() {
+      dpr = Math.min(devicePixelRatio || 1, 2); px = Math.floor(Math.min(S.fit.clientWidth, S.fit.clientHeight, 680));
+      cv.style.width = cv.style.height = px + 'px'; cv.width = cv.height = px * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = '#2b2440'; ctx.fillRect(0, 0, px, px);
+      ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 8]);
+      for (let k = 0; k < MIRRORS[m][0] / 2; k++) { const a = Math.PI / 2 + k * Math.PI / (MIRRORS[m][0] / 2); ctx.beginPath(); ctx.moveTo(px / 2 - Math.cos(a) * px, px / 2 - Math.sin(a) * px); ctx.lineTo(px / 2 + Math.cos(a) * px, px / 2 + Math.sin(a) * px); ctx.stroke(); }
+      ctx.setLineDash([]); painted = 0; praised = false;
+    }
+    function seg(a, b) {
+      const n = MIRRORS[m][0], c = px / 2;
+      ctx.strokeStyle = ink[1]; ctx.lineWidth = px * .022; ctx.lineCap = 'round';
+      for (let k = 0; k < n / 2; k++) for (const flip of [1, -1]) {
+        const t = k * 2 * Math.PI / (n / 2), cs = Math.cos(t), sn = Math.sin(t);
+        const P = p => { const x = (p[0] - c) * flip, y = p[1] - c; return [c + x * cs - y * sn, c + x * sn + y * cs]; };
+        const p = P(a), q = P(b); ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0] + .01, q[1]); ctx.stroke();
+      }
+      painted += Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (!praised && painted > px * 6) { praised = true; K.star(); A.playChime('yay'); K.say('Both sides match. That is symmetry!'); }
+    }
+    function paint(e) { const r = cv.getBoundingClientRect(), p = [e.clientX - r.left, e.clientY - r.top]; seg(last || p, p); last = p; }
+    cv.style.touchAction = 'none';
+    cv.addEventListener('pointerdown', e => { K.wake(); last = null; try { cv.setPointerCapture(e.pointerId); } catch (x) {} paint(e); cv.onpointermove = paint; });
+    const stop = () => { cv.onpointermove = null; last = null; };
+    cv.addEventListener('pointerup', stop); cv.addEventListener('pointercancel', stop);
+    addEventListener('resize', clear);
+    clear(); K.say(S.intro);
+  </script>
+</body>
+</html>
