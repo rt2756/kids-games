@@ -56,7 +56,7 @@
           K.wake();
           if (p !== want) {
             K.wrong(b); K.say((p === 'eyes' || p === 'ears' ? 'Those are ' : 'That is ') + PARTS[p].name + '. Find ' + PARTS[want].name + '.');
-            if (++misses >= 2) [...tray.children].forEach(x => { if (x._ok) x.classList.add('hint'); });
+            ++misses;   // never light up the right part
             return;
           }
           placed.push(p); A.playPop(); K.tone(784, .2, .25); draw();

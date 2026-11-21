@@ -145,7 +145,9 @@
         misses++;
         wrong(b);
         say(c.say || cur.retry || 'Try again!');
-        if (misses >= 2) cur.choices.filter(x => x.ok).forEach(x => x.node.classList.add('hint'));
+        // Never light up the right answer (a child soon learns to tap wrong on purpose).
+        // After two misses, ask the question again instead.
+        if (misses === 2) setTimeout(() => { if (!locked) say(cur.say); }, speakMs(c.say || cur.retry || 'Try again!') + 300);
       }
     }
     newRound();
@@ -204,7 +206,7 @@
           } else {
             misses++; wrong(b);
             say(o.say(it));   // name what was tapped — a miss still teaches
-            if (misses >= 2) row.querySelectorAll('.av-choice').forEach(x => { if (x._ok) x.classList.add('hint'); });
+            if (misses === 2) setTimeout(() => { if (!locked) say(q.say); }, speakMs(o.say(it)) + 300);   // ask again; never light up the answer
           }
         };
         b._ok = it === cur;

@@ -64,7 +64,8 @@
     function hint() {
       if (busy) return;
       const c = cards.find(x => !x.done); if (!c) return;
-      SOUNDS[c.s][1](); cards.filter(x => x.s === c.s).forEach(x => x.node.classList.add('av-glow'));
+      // Light ONE card and play its sound; finding the card that sounds the same is the child's job.
+      cards.forEach(x => x.node.classList.remove('av-glow')); SOUNDS[c.s][1](); c.node.classList.add('av-glow');
     }
     const L = K.levels('sound-pairs', S.ui, n => {
       clearTimeout(timer);

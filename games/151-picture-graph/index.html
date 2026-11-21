@@ -44,7 +44,7 @@
         const b = K.el('button', 'av-choice', '<span class="e">' + o + '</span>');
         b.onclick = () => { if (locked) return; K.wake();
           if (o === q.ok) { b.classList.add('right'); A.playChime('yay'); locked = true; K.say(q.yes); timer = setTimeout(() => { locked = false; ask(); }, K.speakMs(q.yes) + 500); }
-          else { K.wrong(b); K.say('Look at the columns again.'); if (++misses >= 2) [...row.children].forEach(x => { if (x._ok) x.classList.add('hint'); }); } };
+          else { K.wrong(b); K.say('Look at the columns again.'); ++misses; } };
         b._ok = o === q.ok; row.appendChild(b);
       });
     }

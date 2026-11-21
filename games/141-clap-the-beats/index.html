@@ -56,7 +56,7 @@
         b.onclick = () => {
           if (locked) return; K.wake();
           if (o === n) { locked = true; b.classList.add('right'); timer = K.won('Yes! ' + whole() + ' has ' + NUM[n] + (n === 1 ? ' beat.' : ' beats.'), next); }
-          else { K.wrong(b); K.say('Count the blocks.'); if (++misses >= 2) [...row.children].forEach(x => { if (x._ok) x.classList.add('hint'); }); }
+          else { K.wrong(b); K.say('Count the blocks.'); ++misses; }
         };
         b._ok = o === n; row.appendChild(b);
       });

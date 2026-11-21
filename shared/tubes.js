@@ -199,7 +199,7 @@
       if (!junior && !rings && t.length && !full(t)) { sel = i; hint = -1; A.playPop(); return render(); }
       misses++;
       node.classList.add('wrong'); A.playChime('uhoh');
-      setTimeout(() => { node.classList.remove('wrong'); if (misses >= 2 && !locked) showHint(); }, 400);
+      setTimeout(() => node.classList.remove('wrong'), 400);   // no automatic hint after misses: tapping wrong must not solve it
       if (rings) K.say('Too big! A big ring can not sit on a small ring.');
       else if (t.length >= cap) K.say('That tube is full.');
       else { const c = COLOURS[top(ts[sel])][0]; K.say('That one is ' + COLOURS[top(t)][0] + '. Put ' + c + ' with ' + c + '.'); }

@@ -52,11 +52,12 @@
       if (!pick) { pick = c; c.node.classList.add('pick'); A.playPop(); return K.say(WORDS[c.n]); }
       if (pick === c) { pick = null; return c.node.classList.remove('pick'); }
       const a = pick; pick = null; a.node.classList.remove('pick');
-      if (a.n !== c.n) { K.wrong(c.node); K.say('That is ' + WORDS[c.n] + '. Find another ' + WORDS[a.n] + '.'); if (++misses >= 2) hint(); return; }
+      if (a.n !== c.n) { K.wrong(c.node); K.say('That is ' + WORDS[c.n] + '. Find another ' + WORDS[a.n] + '.'); ++misses; return; }
       [a, c].forEach(x => { x.done = true; x.node.classList.add('done'); }); misses = 0; A.playChime('yay');
       if (--left === 0) timer = K.won('You matched them all!', () => L.win()); else K.say(WORDS[c.n] + ' and ' + WORDS[c.n] + '!');
     }
-    function hint() { const c = cards.find(x => !x.done); if (c) cards.filter(x => x.n === c.n).forEach(x => x.node.classList.add('av-glow')); }
+    // A hint lights ONE card; finding its partner is still the child's job.
+    function hint() { const c = cards.find(x => !x.done); if (!c) return; K.wake(); cards.forEach(x => x.node.classList.remove('av-glow')); c.node.classList.add('av-glow'); K.say('Find another ' + WORDS[c.n] + '.'); }
     const L = K.levels('number-pairs', S.ui, n => {
       clearTimeout(timer);
       const [pairs, lo, hi] = LEVELS[Math.min(n, LEVELS.length - 1)];

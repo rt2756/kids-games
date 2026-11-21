@@ -37,11 +37,20 @@
     ABC.forEach(c => strip.appendChild(K.el('span', '', c)));
     let items, at, misses, locked, timer, first = true;
     function mark() { [...strip.children].forEach(s => s.className = items.slice(0, at).some(w => w[0] === s.textContent) ? 'on' : ''); }
-    function hint() { if (!locked) [...pond.children].find(b => b.textContent === items[at]).classList.add('av-glow'); }
+    // A hint never lights the next bubble. It points at the ABC strip: where we
+    // are up to, so the child reads on from there.
+    function hint() {
+      if (locked) return; K.wake();
+      [...strip.children].forEach(s => s.classList.remove('av-glow'));
+      if (!at) { strip.children[0].classList.add('av-glow'); return K.say('Start at A. Which one comes first?'); }
+      const prev = items[at - 1], ch = items[at][0] === prev[0] && prev.length > 1 ? null : prev[0];
+      if (ch) strip.children[ABC.indexOf(ch)].classList.add('av-glow');
+      K.say('After ' + prev + ', what comes next? Look along the ABC line.');
+    }
     function tap(w, b) {
       if (locked || b.classList.contains('done')) return; K.wake();
-      if (w !== items[at]) { K.wrong(b); K.say(at ? 'Not yet. What comes after ' + items[at - 1] + '?' : 'Which one comes first in the alphabet?'); if (++misses >= 2) hint(); return; }
-      b.classList.remove('av-glow'); b.classList.add('done'); b.dataset.k = ++at; misses = 0; A.playPop(); K.tone(380 + at * 60, .15, .2); K.say(w); mark();
+      if (w !== items[at]) { K.wrong(b); K.say(at ? 'Not yet. What comes after ' + items[at - 1] + '?' : 'Which one comes first in the alphabet?'); ++misses; return; }
+      [...strip.children].forEach(s => s.classList.remove('av-glow')); b.classList.add('done'); b.dataset.k = ++at; misses = 0; A.playPop(); K.tone(380 + at * 60, .15, .2); K.say(w); mark();
       if (at === items.length) { locked = true; timer = K.won('Perfect ABC order! ' + items.join(', ') + '.', () => L.win()); }
     }
     const L = K.levels('abc-order', S.ui, n => {

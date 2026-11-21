@@ -38,14 +38,20 @@
     function tap(i, node) {
       if (locked || found.has(i)) return;
       K.wake();
-      if (!diffs.has(i)) { K.wrong(node); if (++misses >= 2) hint(); return K.say('Those two are the same. Keep looking.'); }
-      found.add(i); misses = 0; A.playPop(); K.tone(880, .2, .25);
+      if (!diffs.has(i)) { K.wrong(node); ++misses; return K.say('Those two are the same. Keep looking.'); }
+      found.add(i); misses = 0; A.playPop(); K.tone(880, .2, .25); [left, right].forEach(p => [...p.children].forEach(c => c.classList.remove('av-glow')));
       [left, right].forEach(p => { p.children[i].classList.remove('av-glow'); p.children[i].classList.add('got'); });
       S.sub.textContent = 'Found ' + found.size + ' of ' + diffs.size;
       if (found.size === diffs.size) { locked = true; timer = K.won(diffs.size === 1 ? 'You spotted it!' : 'You found all ' + diffs.size + '!', () => L.win()); }
       else K.say('Yes! ' + (diffs.size - found.size) + ' more.');
     }
-    function hint() { if (locked) return; const i = [...diffs].find(d => !found.has(d)); [left, right].forEach(p => p.children[i].classList.add('av-glow')); }
+    // A hint lights the row the difference is in, never the cell itself.
+    function hint() {
+      if (locked) return; K.wake();
+      const i = [...diffs].find(d => !found.has(d)), r = Math.floor(i / N);
+      [...right.children].forEach((c, j) => c.classList.toggle('av-glow', Math.floor(j / N) === r && !found.has(j)));
+      K.say('Look along this row.');
+    }
     const L = K.levels('spot-the-difference', S.ui, n => {
       clearTimeout(timer);
       let k; [N, k] = LEVELS[Math.min(n, LEVELS.length - 1)];
