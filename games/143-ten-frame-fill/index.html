@@ -12,6 +12,24 @@
   .tf { border:2px solid #333; background:#fff; padding:0; cursor:pointer; position:relative; }
   .tf.red::after, .tf.yel::after { content:''; position:absolute; inset:13%; border-radius:50%; background:#ef4444; box-shadow:inset -4px -5px 0 rgba(0,0,0,.18); }
   .tf.yel::after { background:#facc15; }
+  /* the number to make, big and always on screen so it is not forgotten */
+  .goal { align-self:center; display:flex; align-items:center; gap:.25em; background:#fff; color:#1e293b; border-radius:22px;
+    padding:.08em .55em; font-weight:900; font-size:clamp(52px,14vmin,110px); line-height:1.15; box-shadow:0 6px 0 rgba(0,0,0,.18); cursor:pointer; }
+  .goal .op { color:#64748b; font-size:.7em; }
+  .goal .r { color:#ef4444; } .goal .y { color:#ca8a04; }
+  .goal .q { display:inline-block; min-width:.8em; text-align:center; color:#94a3b8; border:4px dashed #94a3b8; border-radius:14px; padding:0 .12em; font-size:.85em; line-height:1.1; }
+  .goal.av-pop { animation: goalpop .35s ease-out; }
+  @keyframes goalpop { 0%{transform:scale(.7)} 70%{transform:scale(1.08)} 100%{transform:scale(1)} }
+  html[data-theme="dark"] .goal { background:#1e293b; color:#fff; }
+  /* phone on its side: equation left, frame middle, answer buttons stacked on the right */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .goal { flex-shrink:0; font-size:clamp(34px,11vh,56px); }
+    .av-puzzle .av-fit { min-width:0; }  /* let the frame area shrink so the equation and buttons fit beside it */
+    .av-puzzle .av-choices { flex-direction:column; flex-shrink:0; gap:8px; margin:0; }
+    .av-puzzle .av-choices:empty { display:none; }
+    .av-puzzle .av-choices .av-choice { width:clamp(56px,17vh,76px); height:clamp(48px,15vh,64px); min-height:0; padding:0; }
+    .av-puzzle .av-choices .av-choice .e { font-size:clamp(26px,9vh,40px); }
+  }
 </style>
 </head>
 <body>
@@ -24,32 +42,39 @@
     const K = KidsKit, A = KidsAudio;
     const W = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
     const S = K.shell('', []);
-    const frame = K.el('div', 'frame'), row = K.el('div', 'av-choices'); S.fit.appendChild(frame); S.ui.stage.insertBefore(row, S.bar);
+    const frame = K.el('div', 'frame'), row = K.el('div', 'av-choices'), goal = K.el('div', 'goal'); S.fit.appendChild(frame); S.ui.stage.insertBefore(row, S.bar); S.ui.stage.insertBefore(goal, S.fit);
+    goal.onclick = () => { K.wake(); K.say(S.intro); };
     S.ui.setTitle('Ten frame');
     let fixed, added, want, kind, round = 0, misses, locked, timer, prev = -1;
     function size() { const s = Math.floor(Math.min(S.fit.clientWidth / 5, S.fit.clientHeight / 2, 140)); frame.style.width = s * 5 + 'px'; frame.style.height = s * 2 + 'px'; }
     function draw() {
       [...frame.children].forEach((c, i) => { c.className = 'tf' + (i < fixed ? ' red' : i < fixed + added ? ' yel' : ''); });
     }
+    // The big number at the top. sum(a, b, total): "a + b = total"; b may be '?'.
+    function showGoal(html) { goal.innerHTML = html; goal.classList.remove('av-pop'); void goal.offsetWidth; goal.classList.add('av-pop'); }
+    function sum(a, b, total, bClass) {
+      const bHtml = b === '?' ? '<span class="q">?</span>' : '<span class="' + bClass + '">' + b + '</span>';
+      return '<span class="r">' + a + '</span><span class="op">+</span>' + bHtml + '<span class="op">=</span><span>' + total + '</span>';
+    }
     function tell(line) { S.intro = line; S.sub.textContent = line; K.say(line); }
     function next() {
       clearTimeout(timer); misses = 0; locked = false; added = 0; row.innerHTML = '';
       kind = round < 3 ? 0 : round % 3; round++;
       let n; do { n = 1 + Math.floor(Math.random() * (kind === 1 ? 9 : 10)); } while (n === prev); prev = n;
-      if (kind === 0) { fixed = 0; want = n; tell('Show ' + W[n] + '. Tap the boxes.'); }
+      if (kind === 0) { fixed = 0; want = n; tell('Show ' + W[n] + '. Tap the boxes.'); showGoal('<span>' + n + '</span>'); }
       else if (kind === 1) {
-        fixed = n; want = 10 - n; tell('Here is ' + W[n] + '. How many more to make ten?');
+        fixed = n; want = 10 - n; tell('Here is ' + W[n] + '. How many more to make ten?'); showGoal(sum(n, '?', 10));
         const opts = new Set([want]); while (opts.size < 3) { const o = want + Math.floor(Math.random() * 5) - 2; if (o >= 0 && o <= 10) opts.add(o); }
         [...opts].sort((a, b) => a - b).forEach(o => {
           const b = K.el('button', 'av-choice', '<span class="e">' + o + '</span>');
           b.onclick = () => { if (locked) return; K.wake();
-            if (o === want) { locked = true; b.classList.add('right'); added = want; draw(); timer = K.won('Yes! ' + W[n] + ' and ' + W[want] + ' make ten.', next); }
+            if (o === want) { locked = true; b.classList.add('right'); added = want; draw(); showGoal(sum(n, want, 10, 'y')); timer = K.won('Yes! ' + W[n] + ' and ' + W[want] + ' make ten.', next); }
             else { K.wrong(b); K.say('Count the empty boxes.'); if (++misses >= 2) [...row.children].forEach(x => { if (x._ok) x.classList.add('hint'); }); } };
           b._ok = o === want; row.appendChild(b);
         });
       } else {
         const total = Math.max(3, n); fixed = 1 + Math.floor(Math.random() * (total - 1)); want = total - fixed;
-        tell(W[total] + ' is ' + W[fixed] + ' and how many more? Add yellow ones to make ' + W[total] + '.');
+        tell(W[total] + ' is ' + W[fixed] + ' and how many more? Add yellow ones to make ' + W[total] + '.'); showGoal(sum(fixed, '?', total));
       }
       size(); draw();
     }
@@ -59,7 +84,7 @@
         if (locked || kind === 1) return; K.wake();
         if (i < fixed) return;
         added += i < fixed + added ? -1 : 1; A.playPop(); draw(); K.say(W[fixed + added]);
-        if (added === want) { locked = true; timer = K.won(kind === 0 ? 'Yes! That is ' + W[want] + '.' : 'Yes! ' + W[fixed] + ' and ' + W[want] + ' make ' + W[fixed + want] + '.', next); }
+        if (added === want) { if (kind === 2) showGoal(sum(fixed, want, fixed + want, 'y')); locked = true; timer = K.won(kind === 0 ? 'Yes! That is ' + W[want] + '.' : 'Yes! ' + W[fixed] + ' and ' + W[want] + ' make ' + W[fixed + want] + '.', next); }
       };
       frame.appendChild(c);
     }
