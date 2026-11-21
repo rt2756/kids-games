@@ -13,6 +13,15 @@
   .item b { position:absolute; right:-.7em; top:0; font-size:.28em; background:#ffe066; color:#333; border-radius:10px; padding:4px 10px; transform:rotate(8deg); box-shadow:0 3px 0 rgba(0,0,0,.2); }
   .counter { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; align-items:center; min-height:clamp(64px,16vmin,92px); width:min(100%,560px); background:rgba(255,255,255,.6); border-radius:16px; padding:8px; }
   .counter button, .pay { border:none; background:none; padding:0; cursor:pointer; font:inherit; }
+  /* the coins to pay with sit right under the counter, and the whole group is centred */
+  .av-fit.shopfit { flex-direction:column; gap:clamp(12px,3vh,28px); }
+  .av-fit.shopfit .purse { flex-direction:row; flex-wrap:wrap; max-height:none; }
+  @media (max-height: 500px) and (orientation: landscape) {
+    .av-fit.shopfit { gap:6px; }
+    .shop { gap:4px; }
+    .item { font-size:clamp(44px,15vh,70px); }
+    .counter { min-height:52px; padding:4px; }
+  }
   .sum { font-weight:900; font-size:clamp(18px,4.6vmin,28px); }
   .coin, .note { display:flex; align-items:center; justify-content:center; font-weight:900; color:#3b2a00; width:clamp(46px,12vmin,68px); height:clamp(46px,12vmin,68px); border-radius:50%;
     background:radial-gradient(circle at 35% 30%, #fff3b0, #d4a017); border:3px solid #a67c00; font-size:clamp(14px,3.6vmin,20px); box-shadow:0 4px 0 rgba(0,0,0,.25); }
@@ -35,7 +44,7 @@
     let cur = +(localStorage.getItem('kids-currency') || (/Kolkata|Calcutta/.test(zone) ? 0 : /London/.test(zone) ? 2 : /^Europe/.test(zone) ? 3 : /^America|^Australia|^Pacific/.test(zone) ? 1 : 0));
     const S = K.shell('', [['💡 Hint', hint]]);
     const curB = S.button(MONEY[cur][0] + ' Money', () => { cur = (cur + 1) % MONEY.length; try { localStorage.setItem('kids-currency', cur); } catch (e) {} curB.textContent = MONEY[cur][0] + ' Money'; round = Math.max(0, round - 1); next(); });
-    const shop = K.el('div', 'shop'), purse = K.el('div', 'av-bar'); S.fit.appendChild(shop); S.ui.stage.insertBefore(purse, S.bar);
+    const shop = K.el('div', 'shop'), purse = K.el('div', 'av-bar purse'); S.fit.classList.add('shopfit'); S.fit.append(shop, purse);
     S.ui.setTitle('Coin shop');
     let price, paid, money, toy, round = 0, locked, timer;
     const total = () => paid.reduce((a, b) => a + b, 0);
