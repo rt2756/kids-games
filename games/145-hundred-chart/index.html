@@ -33,18 +33,36 @@
       board.style.width = s * 10 + 'px'; board.style.height = s * rows + 'px'; board.style.gridTemplateRows = 'repeat(' + rows + ',1fr)'; board.style.fontSize = Math.max(10, Math.floor(s * .42)) + 'px';
     }
     function ask() {
-      misses = 0;
+      misses = 0; clearGlow();
       if (!todo.length) { locked = true; tile.textContent = '🎉'; timer = K.won(lv.skip ? 'Look at the pattern! You counted in ' + lv.skip + 's.' : 'The chart is complete!', () => L.win()); return; }
       want = todo[0]; tile.textContent = lv.skip ? '➡️ ' + want : want;
       S.intro = lv.skip ? 'Count in ' + lv.skip + 's. Tap ' + want + '.' : 'Where does ' + want + ' go?'; S.sub.textContent = S.intro; K.say(S.intro);
     }
     function tap(n, node) {
       if (locked) return; K.wake();
-      if (n !== want) { if (!lv.skip && !node.classList.contains('blank')) return; K.wrong(node); if (++misses >= 2) hint(); return K.say(lv.skip ? 'Not that one. Count on ' + lv.skip + ' more.' : 'Look at the numbers on each side.'); }
+      if (n !== want) { if (!lv.skip && !node.classList.contains('blank')) return; K.wrong(node); ++misses; return K.say(lv.skip ? 'Not that one. Count on ' + lv.skip + ' more.' : 'Not there. Look at the numbers on each side.'); }
       node.classList.remove('blank', 'av-glow'); node.classList.add('lit'); node.textContent = n; A.playPop(); K.tone(400 + n * 6, .15, .2);
       todo.shift(); ask();
     }
-    function hint() { if (!locked) cells[want].classList.add('av-glow'); }
+    // A hint never lights up the answer itself (wrong taps must not give it
+    // away). It lights the clue instead: the numbers on each side, or, when
+    // counting in steps, the last number counted.
+    function clearGlow() { if (cells) Object.values(cells).forEach(c => c.classList.remove('av-glow')); }
+    function hint() {
+      if (locked) return; K.wake(); clearGlow();
+      const shown = i => cells[i] && !cells[i].classList.contains('blank');
+      if (lv.skip) {
+        const from = want - lv.skip;
+        if (shown(from)) { cells[from].classList.add('av-glow'); K.say('Start at ' + from + '. Count on ' + lv.skip + ' more.'); }
+        else K.say('Start at the beginning. Count ' + lv.skip + ' numbers.');
+        return;
+      }
+      const near = [want - 1, want + 1].filter(shown);
+      near.forEach(i => cells[i].classList.add('av-glow'));
+      if (shown(want - 1)) K.say(want + ' comes just after ' + (want - 1) + '.');
+      else if (shown(want + 1)) K.say(want + ' comes just before ' + (want + 1) + '.');
+      else K.say('Count along the row to find ' + want + '.');
+    }
     const L = K.levels('hundred-chart', S.ui, n => {
       clearTimeout(timer); lv = LEVELS[Math.min(n, LEVELS.length - 1)]; locked = false;
       max = lv.skip ? (lv.skip === 2 ? 50 : 100) : lv.max;
